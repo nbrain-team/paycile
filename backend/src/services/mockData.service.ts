@@ -15,11 +15,6 @@ const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', '
 const companies = ['ABC Corp', 'XYZ Industries', 'Acme Inc', 'Global Solutions', 'Tech Innovations', 'Prime Services'];
 const policyTypes = ['General Liability', 'Professional Liability', 'Property Insurance', 'Auto Insurance', 'Workers Compensation', 'Cyber Insurance'];
 const paymentMethods = ['ach', 'credit_card', 'check', 'wire'];
-const insuranceCompanies = [
-  { id: uuidv4(), name: 'Shield Insurance Group', code: 'SHIELD' },
-  { id: uuidv4(), name: 'Premier Coverage LLC', code: 'PREMIER' },
-  { id: uuidv4(), name: 'Secure Protection Co', code: 'SECURE' },
-];
 
 // Generate invoice line items
 const generateInvoiceLineItems = (basePremium: number, policyType: string, isFirstInvoice: boolean = false) => {
@@ -151,14 +146,36 @@ const generateInvoiceLineItems = (basePremium: number, policyType: string, isFir
 export const generateMockUsers = () => {
   const users = [];
   
-  // Add some agents
-  for (let i = 0; i < 5; i++) {
+  // Add brokers
+  const brokerIds = [];
+  for (let i = 0; i < 3; i++) {
+    const brokerId = uuidv4();
+    brokerIds.push(brokerId);
+    users.push({
+      id: brokerId,
+      email: `broker${i + 1}@paycile.com`,
+      firstName: randomElement(firstNames),
+      lastName: randomElement(lastNames),
+      role: 'broker',
+      phone: `555-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+      companyName: `${randomElement(['Premier', 'Elite', 'Professional'])} Insurance Brokers`,
+      isActive: true,
+      emailVerified: true,
+      twoFactorEnabled: true,
+      createdAt: randomDate(new Date(2022, 0, 1), new Date(2023, 0, 1)),
+      updatedAt: new Date(),
+    });
+  }
+  
+  // Add agents (assigned to brokers)
+  for (let i = 0; i < 10; i++) {
     users.push({
       id: uuidv4(),
       email: `agent${i + 1}@paycile.com`,
       firstName: randomElement(firstNames),
       lastName: randomElement(lastNames),
       role: 'agent',
+      brokerId: randomElement(brokerIds), // Assign agent to a broker
       phone: `555-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
       companyName: 'Paycile Insurance Agency',
       isActive: true,
@@ -192,8 +209,67 @@ export const generateMockUsers = () => {
   return users;
 };
 
+// Generate insurance companies with payment waterfall configuration
+export const generateInsuranceCompanies = (brokerIds: string[]) => {
+  const companies = [];
+  const companyNames = [
+    { name: 'Shield Insurance Group', code: 'SHIELD' },
+    { name: 'Premier Coverage LLC', code: 'PREMIER' },
+    { name: 'Secure Protection Co', code: 'SECURE' },
+    { name: 'Guardian Insurance Inc', code: 'GUARDIAN' },
+    { name: 'Atlas Coverage Solutions', code: 'ATLAS' },
+  ];
+  
+  const lineItemTypes = ['premium', 'tax', 'fee'];
+  
+  companyNames.forEach((company, index) => {
+    // Default payment waterfall order
+    const defaultWaterfall = [
+      { id: uuidv4(), type: 'premium', priority: 1, description: 'Base Premium' },
+      { id: uuidv4(), type: 'tax', priority: 2, description: 'State & Municipal Taxes' },
+      { id: uuidv4(), type: 'fee', priority: 3, description: 'Policy & Service Fees' },
+    ];
+    
+    // Some companies might have different priorities
+    if (index % 2 === 0) {
+      // Swap tax and fee priority for some companies
+      defaultWaterfall[1].priority = 3;
+      defaultWaterfall[2].priority = 2;
+    }
+    
+    companies.push({
+      id: uuidv4(),
+      ...company,
+      brokerId: randomElement(brokerIds),
+      contactEmail: `contact@${company.code.toLowerCase()}.com`,
+      contactPhone: `1-800-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+      address: {
+        street: `${Math.floor(Math.random() * 9000) + 1000} ${randomElement(['Main', 'Oak', 'Elm', 'Market', 'Broadway'])} Street`,
+        city: randomElement(['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix']),
+        state: randomElement(['NY', 'CA', 'IL', 'TX', 'AZ']),
+        zip: String(Math.floor(Math.random() * 90000) + 10000),
+      },
+      paymentWaterfall: defaultWaterfall,
+      commissionRate: 0.10 + Math.random() * 0.05, // 10-15% commission
+      claimsEmail: `claims@${company.code.toLowerCase()}.com`,
+      claimsPhone: `1-800-${Math.floor(Math.random() * 900) + 100}-CLAIM`,
+      policyTypes: randomElement([
+        ['General Liability', 'Professional Liability'],
+        ['Property Insurance', 'Auto Insurance'],
+        ['Workers Compensation', 'Cyber Insurance'],
+        ['General Liability', 'Property Insurance', 'Auto Insurance'],
+      ]),
+      isActive: true,
+      createdAt: randomDate(new Date(2020, 0, 1), new Date(2022, 0, 1)),
+      updatedAt: new Date(),
+    });
+  });
+  
+  return companies;
+};
+
 // Generate mock policies
-export const generateMockPolicies = (users: any[]) => {
+export const generateMockPolicies = (users: any[], insuranceCompanies: any[]) => {
   const policies = [];
   const clients = users.filter(u => u.role === 'client');
   const agents = users.filter(u => u.role === 'agent');
@@ -201,6 +277,7 @@ export const generateMockPolicies = (users: any[]) => {
   for (let i = 0; i < 100; i++) {
     const client = randomElement(clients);
     const agent = randomElement(agents);
+    const insuranceCompany = randomElement(insuranceCompanies);
     const effectiveDate = randomDate(new Date(2023, 0, 1), new Date());
     const expirationDate = new Date(effectiveDate);
     expirationDate.setFullYear(expirationDate.getFullYear() + 1);
@@ -212,8 +289,8 @@ export const generateMockPolicies = (users: any[]) => {
       client,
       agentId: agent.id,
       agent,
-      insuranceCompanyId: randomElement(insuranceCompanies).id,
-      insuranceCompany: randomElement(insuranceCompanies),
+      insuranceCompanyId: insuranceCompany.id,
+      insuranceCompany,
       policyType: randomElement(policyTypes),
       premiumAmount: Math.floor(Math.random() * 10000) + 1000,
       paymentFrequency: randomElement(['monthly', 'quarterly', 'semi-annual', 'annual']),
@@ -396,18 +473,19 @@ export const generateMockReconciliations = (payments: any[], invoices: any[]) =>
 // Main mock data generator
 export const generateAllMockData = () => {
   const users = generateMockUsers();
-  const policies = generateMockPolicies(users);
+  const insuranceCompanies = generateInsuranceCompanies(users.filter(u => u.role === 'broker').map(u => u.id));
+  const policies = generateMockPolicies(users, insuranceCompanies);
   const invoices = generateMockInvoices(policies);
   const payments = generateMockPayments(invoices);
   const reconciliations = generateMockReconciliations(payments, invoices);
   
   return {
     users,
+    insuranceCompanies,
     policies,
     invoices,
     payments,
     reconciliations,
-    insuranceCompanies,
   };
 };
 

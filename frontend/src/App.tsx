@@ -10,6 +10,8 @@ import ReconciliationPage from './pages/ReconciliationPage';
 import ClientsPage from './pages/ClientsPage';
 import ChatPage from './pages/ChatPage';
 import SettingsPage from './pages/SettingsPage';
+import AgentsPage from './pages/AgentsPage';
+import InsuranceCompaniesPage from './pages/InsuranceCompaniesPage';
 import Layout from './components/Layout';
 
 function App() {
@@ -31,6 +33,8 @@ function App() {
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="reconciliation" element={<ReconciliationPage />} />
           <Route path="clients" element={<ClientsPage />} />
+          <Route path="agents" element={<AgentsPage />} />
+          <Route path="insurance-companies" element={<InsuranceCompaniesPage />} />
           <Route path="chat" element={<ChatPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

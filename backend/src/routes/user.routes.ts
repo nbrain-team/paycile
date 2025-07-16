@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getMockData } from '../services/mockData.service';
+import { v4 as uuidv4 } from 'uuid';
 
 export const userRouter = Router();
 
@@ -9,9 +10,15 @@ userRouter.get('/', (req, res) => {
   const limit = parseInt(req.query.limit as string) || 20;
   const role = req.query.role as string;
   const search = req.query.search as string;
+  const brokerId = req.query.brokerId as string;
   
   // Filter by role if specified
   let filteredUsers = role ? users.filter(u => u.role === role) : [...users];
+  
+  // Filter by brokerId for agents
+  if (brokerId) {
+    filteredUsers = filteredUsers.filter(u => u.brokerId === brokerId);
+  }
   
   // Filter by search term if provided
   if (search) {
@@ -79,5 +86,66 @@ userRouter.get('/:id', (req, res) => {
       policyCount: userPolicies.length,
       totalPremium
     }
+  });
+});
+
+// Create new agent (for brokers)
+userRouter.post('/agents', (req, res) => {
+  const { users } = getMockData();
+  const { firstName, lastName, email, phone, brokerId } = req.body;
+  
+  // Check if email already exists
+  if (users.find(u => u.email === email)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Email already exists'
+    });
+  }
+  
+  const newAgent = {
+    id: uuidv4(),
+    email,
+    firstName,
+    lastName,
+    role: 'agent',
+    brokerId,
+    phone,
+    companyName: 'Paycile Insurance Agency',
+    isActive: true,
+    emailVerified: false,
+    twoFactorEnabled: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  
+  users.push(newAgent);
+  
+  res.status(201).json({
+    success: true,
+    data: newAgent,
+    message: 'Agent created successfully'
+  });
+});
+
+// Update agent status
+userRouter.patch('/:id/status', (req, res) => {
+  const { users } = getMockData();
+  const { isActive } = req.body;
+  const user = users.find(u => u.id === req.params.id);
+  
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      error: 'User not found'
+    });
+  }
+  
+  user.isActive = isActive;
+  user.updatedAt = new Date();
+  
+  res.json({
+    success: true,
+    data: user,
+    message: `User ${isActive ? 'activated' : 'deactivated'} successfully`
   });
 });
