@@ -48,5 +48,8 @@ services:
 databases:
   - name: paycile-db
     region: oregon
-    plan: standard  # Paid plan for database
+    databaseName: paycile
+    user: paycile_user
+    # Using new database pricing - no plan specified, will default to basic tier
+    # You can upgrade in dashboard if needed
     postgresMajorVersion: 15 
