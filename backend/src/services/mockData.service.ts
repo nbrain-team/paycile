@@ -183,13 +183,24 @@ export const generateMockUsers = () => {
     });
   }
   
-  // Add agents (assigned to brokers)
-  for (let i = 0; i < 10; i++) {
+  // Add exactly 5 agents with specific demo accounts
+  const agentData = [
+    { firstName: 'John', lastName: 'Smith', email: 'john.smith@paycile.com' },
+    { firstName: 'Sarah', lastName: 'Johnson', email: 'sarah.johnson@paycile.com' },
+    { firstName: 'Michael', lastName: 'Brown', email: 'michael.brown@paycile.com' },
+    { firstName: 'Emily', lastName: 'Davis', email: 'emily.davis@paycile.com' },
+    { firstName: 'Robert', lastName: 'Wilson', email: 'robert.wilson@paycile.com' },
+  ];
+  
+  const agentIds = [];
+  agentData.forEach((agent, i) => {
+    const agentId = uuidv4();
+    agentIds.push(agentId);
     users.push({
-      id: uuidv4(),
-      email: `agent${i + 1}@paycile.com`,
-      firstName: randomElement(firstNames),
-      lastName: randomElement(lastNames),
+      id: agentId,
+      email: agent.email,
+      firstName: agent.firstName,
+      lastName: agent.lastName,
       role: 'agent',
       brokerId: randomElement(brokerIds), // Assign agent to a broker
       phone: `555-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
@@ -200,7 +211,7 @@ export const generateMockUsers = () => {
       createdAt: randomDate(new Date(2023, 0, 1), new Date()),
       updatedAt: new Date(),
     });
-  }
+  });
   
   // Add clients
   for (let i = 0; i < 50; i++) {
@@ -234,23 +245,51 @@ export const generateInsuranceCompanies = (brokerIds: string[]) => {
     { name: 'Secure Protection Co', code: 'SECURE' },
     { name: 'Guardian Insurance Inc', code: 'GUARDIAN' },
     { name: 'Atlas Coverage Solutions', code: 'ATLAS' },
+    { name: 'Horizon Insurance Partners', code: 'HORIZON' },
+    { name: 'Summit Risk Management', code: 'SUMMIT' },
   ];
   
   const lineItemTypes = ['premium', 'tax', 'fee'];
   
   companyNames.forEach((company, index) => {
-    // Default payment waterfall order
-    const defaultWaterfall = [
-      { id: uuidv4(), type: 'premium', priority: 1, description: 'Base Premium' },
-      { id: uuidv4(), type: 'tax', priority: 2, description: 'State & Municipal Taxes' },
-      { id: uuidv4(), type: 'fee', priority: 3, description: 'Policy & Service Fees' },
-    ];
+    let waterfall;
     
-    // Some companies might have different priorities
-    if (index % 2 === 0) {
-      // Swap tax and fee priority for some companies
-      defaultWaterfall[1].priority = 3;
-      defaultWaterfall[2].priority = 2;
+    // Different waterfall configurations
+    if (index === 0) {
+      // Standard: Premium → Tax → Fee
+      waterfall = [
+        { id: uuidv4(), type: 'premium', priority: 1, description: 'Base Premium' },
+        { id: uuidv4(), type: 'tax', priority: 2, description: 'State & Municipal Taxes' },
+        { id: uuidv4(), type: 'fee', priority: 3, description: 'Policy & Service Fees' },
+      ];
+    } else if (index === 1 || index === 3) {
+      // Tax-first: Tax → Premium → Fee
+      waterfall = [
+        { id: uuidv4(), type: 'tax', priority: 1, description: 'State & Municipal Taxes' },
+        { id: uuidv4(), type: 'premium', priority: 2, description: 'Base Premium' },
+        { id: uuidv4(), type: 'fee', priority: 3, description: 'Policy & Service Fees' },
+      ];
+    } else if (index === 2 || index === 5) {
+      // Fee-first: Fee → Premium → Tax
+      waterfall = [
+        { id: uuidv4(), type: 'fee', priority: 1, description: 'Policy & Service Fees' },
+        { id: uuidv4(), type: 'premium', priority: 2, description: 'Base Premium' },
+        { id: uuidv4(), type: 'tax', priority: 3, description: 'State & Municipal Taxes' },
+      ];
+    } else if (index === 4) {
+      // Premium-Fee-Tax: Premium → Fee → Tax
+      waterfall = [
+        { id: uuidv4(), type: 'premium', priority: 1, description: 'Base Premium' },
+        { id: uuidv4(), type: 'fee', priority: 2, description: 'Policy & Service Fees' },
+        { id: uuidv4(), type: 'tax', priority: 3, description: 'State & Municipal Taxes' },
+      ];
+    } else {
+      // Tax-Fee-Premium: Tax → Fee → Premium
+      waterfall = [
+        { id: uuidv4(), type: 'tax', priority: 1, description: 'State & Municipal Taxes' },
+        { id: uuidv4(), type: 'fee', priority: 2, description: 'Policy & Service Fees' },
+        { id: uuidv4(), type: 'premium', priority: 3, description: 'Base Premium' },
+      ];
     }
     
     companies.push({
@@ -265,7 +304,7 @@ export const generateInsuranceCompanies = (brokerIds: string[]) => {
         state: randomElement(['NY', 'CA', 'IL', 'TX', 'AZ']),
         zip: String(Math.floor(Math.random() * 90000) + 10000),
       },
-      paymentWaterfall: defaultWaterfall,
+      paymentWaterfall: waterfall,
       commissionRate: 0.10 + Math.random() * 0.05, // 10-15% commission
       claimsEmail: `claims@${company.code.toLowerCase()}.com`,
       claimsPhone: `1-800-${Math.floor(Math.random() * 900) + 100}-CLAIM`,

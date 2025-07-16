@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import Modal from '../components/Modal';
@@ -217,7 +218,7 @@ export default function PaymentsPage() {
                       {new Date(payment.paymentDate).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`badge-${getStatusColor(payment.status)}`}>
+                      <span className={`badge-${payment.status === 'completed' ? 'success' : payment.status === 'pending' ? 'warning' : 'error'}`}>
                         {payment.status}
                       </span>
                     </td>
@@ -229,21 +230,13 @@ export default function PaymentsPage() {
                         {reconciliationStatus}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button className="text-primary-600 hover:text-primary-900">View</button>
-                        {reconciliationStatus === 'unmatched' && (
-                          <button 
-                            className="text-secondary-600 hover:text-secondary-900"
-                            onClick={() => {
-                              setSelectedPayment(payment);
-                              setShowReconcileModal(true);
-                            }}
-                          >
-                            Reconcile
-                          </button>
-                        )}
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <Link
+                        to={`/payments/${payment.id}`}
+                        className="text-primary-600 hover:text-primary-900"
+                      >
+                        View Details
+                      </Link>
                     </td>
                   </tr>
                 );

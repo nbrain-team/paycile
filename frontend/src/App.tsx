@@ -6,6 +6,7 @@ import PoliciesPage from './pages/PoliciesPage';
 import PolicyDetailPage from './pages/PolicyDetailPage';
 import InvoicesPage from './pages/InvoicesPage';
 import PaymentsPage from './pages/PaymentsPage';
+import PaymentDetailPage from './pages/PaymentDetailPage';
 import ReconciliationPage from './pages/ReconciliationPage';
 import ClientsPage from './pages/ClientsPage';
 import ChatPage from './pages/ChatPage';
@@ -31,6 +32,7 @@ function App() {
           <Route path="policies/:id" element={<PolicyDetailPage />} />
           <Route path="invoices" element={<InvoicesPage />} />
           <Route path="payments" element={<PaymentsPage />} />
+          <Route path="payments/:id" element={<PaymentDetailPage />} />
           <Route path="reconciliation" element={<ReconciliationPage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="agents" element={<AgentsPage />} />

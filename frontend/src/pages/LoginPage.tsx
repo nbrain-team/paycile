@@ -276,9 +276,16 @@ export default function LoginPage() {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-600 text-center">Demo Credentials:</p>
             <div className="mt-2 space-y-1 text-xs text-gray-500 text-center">
-              <p>Admin: danny@nbrain.ai / Tm0bile#88</p>
-              <p>Broker: broker1@paycile.com / any password</p>
-              <p>Agent: agent1@paycile.com / any password</p>
+              <p className="font-semibold">Admin:</p>
+              <p>danny@nbrain.ai / Tm0bile#88</p>
+              <p className="font-semibold mt-2">Brokers:</p>
+              <p>broker1@paycile.com / any password</p>
+              <p className="font-semibold mt-2">Agents:</p>
+              <p>john.smith@paycile.com / any password</p>
+              <p>sarah.johnson@paycile.com / any password</p>
+              <p>michael.brown@paycile.com / any password</p>
+              <p>emily.davis@paycile.com / any password</p>
+              <p>robert.wilson@paycile.com / any password</p>
             </div>
           </div>
         </div>
