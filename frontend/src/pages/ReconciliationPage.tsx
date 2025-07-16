@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import Modal from '../components/Modal';
 
@@ -11,6 +11,8 @@ export default function ReconciliationPage() {
   const [showManualMatchModal, setShowManualMatchModal] = useState(false);
   const [disputeNotes, setDisputeNotes] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
+  
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['reconciliations', page, statusFilter],
@@ -26,29 +28,74 @@ export default function ReconciliationPage() {
     },
   });
 
+  // Accept AI Suggestion mutation
+  const acceptSuggestionMutation = useMutation({
+    mutationFn: async ({ reconciliationId, invoiceId }: { reconciliationId: string; invoiceId: string }) => {
+      const response = await api.post(`/reconciliations/${reconciliationId}/accept-suggestion`, {
+        invoiceId,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reconciliations'] });
+    },
+  });
+
+  // Resolve Dispute mutation
+  const resolveDisputeMutation = useMutation({
+    mutationFn: async ({ reconciliationId, notes }: { reconciliationId: string; notes: string }) => {
+      const response = await api.post(`/reconciliations/${reconciliationId}/resolve-dispute`, {
+        notes,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reconciliations'] });
+      setShowDisputeModal(false);
+      setDisputeNotes('');
+    },
+  });
+
+  // Manual Match mutation
+  const manualMatchMutation = useMutation({
+    mutationFn: async ({ reconciliationId, invoiceId }: { reconciliationId: string; invoiceId: string }) => {
+      const response = await api.post(`/reconciliations/${reconciliationId}/manual-match`, {
+        invoiceId,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reconciliations'] });
+      setShowManualMatchModal(false);
+      setSelectedInvoiceId('');
+    },
+  });
+
   const handleAcceptSuggestion = (reconciliation: any) => {
     const topSuggestion = reconciliation.aiSuggestions?.suggestedMatches?.[0];
     if (topSuggestion) {
-      alert(`Accepting AI suggestion: Invoice ${topSuggestion.invoiceId?.slice(-8)} with ${Math.round(topSuggestion.confidence * 100)}% confidence`);
-      // In a real app, this would make an API call to update the reconciliation
+      acceptSuggestionMutation.mutate({
+        reconciliationId: reconciliation.id,
+        invoiceId: topSuggestion.invoiceId,
+      });
     }
   };
 
   const handleResolveDispute = () => {
     if (selectedReconciliation && disputeNotes) {
-      alert(`Resolving dispute for payment ${selectedReconciliation.payment?.paymentReference} with notes: ${disputeNotes}`);
-      setShowDisputeModal(false);
-      setDisputeNotes('');
-      // In a real app, this would make an API call
+      resolveDisputeMutation.mutate({
+        reconciliationId: selectedReconciliation.id,
+        notes: disputeNotes,
+      });
     }
   };
 
   const handleManualMatch = () => {
     if (selectedReconciliation && selectedInvoiceId) {
-      alert(`Manually matching payment ${selectedReconciliation.payment?.paymentReference} to invoice ${selectedInvoiceId}`);
-      setShowManualMatchModal(false);
-      setSelectedInvoiceId('');
-      // In a real app, this would make an API call
+      manualMatchMutation.mutate({
+        reconciliationId: selectedReconciliation.id,
+        invoiceId: selectedInvoiceId,
+      });
     }
   };
 
@@ -283,8 +330,9 @@ export default function ReconciliationPage() {
                       <button 
                         className="btn-primary btn-sm"
                         onClick={() => handleAcceptSuggestion(reconciliation)}
+                        disabled={acceptSuggestionMutation.isPending}
                       >
-                        Accept AI Suggestion
+                        {acceptSuggestionMutation.isPending ? 'Processing...' : 'Accept AI Suggestion'}
                       </button>
                     </>
                   )}
@@ -374,9 +422,9 @@ export default function ReconciliationPage() {
             <button
               onClick={handleResolveDispute}
               className="btn-primary btn-sm"
-              disabled={!disputeNotes}
+              disabled={!disputeNotes || resolveDisputeMutation.isPending}
             >
-              Resolve Dispute
+              {resolveDisputeMutation.isPending ? 'Resolving...' : 'Resolve Dispute'}
             </button>
           </div>
         </div>
@@ -417,9 +465,9 @@ export default function ReconciliationPage() {
             <button
               onClick={handleManualMatch}
               className="btn-primary btn-sm"
-              disabled={!selectedInvoiceId}
+              disabled={!selectedInvoiceId || manualMatchMutation.isPending}
             >
-              Match Invoice
+              {manualMatchMutation.isPending ? 'Matching...' : 'Match Invoice'}
             </button>
           </div>
         </div>

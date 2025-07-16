@@ -7,6 +7,7 @@ export default function InvoicesPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
 
@@ -24,6 +25,17 @@ export default function InvoicesPage() {
     },
   });
 
+  // Fetch invoice details when selected
+  const { data: invoiceDetail } = useQuery({
+    queryKey: ['invoice', selectedInvoice?.id],
+    queryFn: async () => {
+      if (!selectedInvoice?.id) return null;
+      const response = await api.get(`/invoices/${selectedInvoice.id}`);
+      return response.data.data;
+    },
+    enabled: !!selectedInvoice?.id && showDetailModal,
+  });
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid': return 'success';
@@ -38,6 +50,15 @@ export default function InvoicesPage() {
       alert(`Processing payment for invoice ${selectedInvoice.invoiceNumber} - $${selectedInvoice.amount} via ${paymentMethod.replace('_', ' ')}`);
       setShowPayModal(false);
       // In a real app, this would integrate with payment processing
+    }
+  };
+
+  const getLineItemTypeColor = (type: string) => {
+    switch (type) {
+      case 'premium': return 'text-gray-900';
+      case 'tax': return 'text-blue-600';
+      case 'fee': return 'text-purple-600';
+      default: return 'text-gray-600';
     }
   };
 
@@ -168,7 +189,15 @@ export default function InvoicesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button className="text-primary-600 hover:text-primary-900">View</button>
+                      <button 
+                        className="text-primary-600 hover:text-primary-900"
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setShowDetailModal(true);
+                        }}
+                      >
+                        View
+                      </button>
                       {invoice.status === 'sent' && (
                         <button 
                           className="text-success-600 hover:text-success-900"
@@ -262,6 +291,91 @@ export default function InvoicesPage() {
               Process Payment
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Invoice Detail Modal */}
+      <Modal
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        title={`Invoice ${invoiceDetail?.invoiceNumber || ''}`}
+      >
+        <div className="space-y-6">
+          {invoiceDetail && (
+            <>
+              {/* Invoice Header Info */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-600">Client</p>
+                  <p className="font-medium">
+                    {invoiceDetail.client?.firstName} {invoiceDetail.client?.lastName}
+                    {invoiceDetail.client?.companyName && (
+                      <span className="block text-xs text-gray-500">{invoiceDetail.client.companyName}</span>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Policy</p>
+                  <p className="font-medium">{invoiceDetail.policy?.policyNumber}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Billing Period</p>
+                  <p className="font-medium">
+                    {new Date(invoiceDetail.billingPeriodStart).toLocaleDateString()} - {new Date(invoiceDetail.billingPeriodEnd).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Due Date</p>
+                  <p className="font-medium">{new Date(invoiceDetail.dueDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              {/* Line Items */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Invoice Breakdown</h4>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {invoiceDetail.lineItems?.map((item: any) => (
+                        <tr key={item.id}>
+                          <td className={`px-4 py-2 text-sm ${getLineItemTypeColor(item.type)}`}>
+                            {item.description}
+                          </td>
+                          <td className={`px-4 py-2 text-sm text-right ${getLineItemTypeColor(item.type)}`}>
+                            ${item.amount.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="bg-gray-50">
+                        <td className="px-4 py-2 text-sm font-medium text-gray-900">Total</td>
+                        <td className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
+                          ${invoiceDetail.amount.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Status and Notes */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className={`badge-${getStatusColor(invoiceDetail.status)}`}>
+                    {invoiceDetail.status.replace('_', ' ')}
+                  </span>
+                </div>
+                {invoiceDetail.notes && (
+                  <p className="text-sm text-gray-600">{invoiceDetail.notes}</p>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

@@ -39,3 +39,21 @@ invoiceRouter.get('/', (req, res) => {
     },
   });
 });
+
+// Get invoice details with line items
+invoiceRouter.get('/:id', (req, res) => {
+  const { invoices } = getMockData();
+  const invoice = invoices.find(i => i.id === req.params.id);
+  
+  if (!invoice) {
+    return res.status(404).json({
+      success: false,
+      error: 'Invoice not found'
+    });
+  }
+  
+  res.json({
+    success: true,
+    data: invoice
+  });
+});

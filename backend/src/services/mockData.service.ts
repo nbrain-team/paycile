@@ -21,6 +21,132 @@ const insuranceCompanies = [
   { id: uuidv4(), name: 'Secure Protection Co', code: 'SECURE' },
 ];
 
+// Generate invoice line items
+const generateInvoiceLineItems = (basePremium: number, policyType: string, isFirstInvoice: boolean = false) => {
+  const lineItems = [];
+  
+  // Base Premium
+  lineItems.push({
+    id: uuidv4(),
+    description: `${policyType} Premium`,
+    type: 'premium',
+    amount: basePremium,
+    taxable: true,
+  });
+  
+  // State taxes (varies by state, typically 2-5%)
+  const stateTaxRate = 0.02 + Math.random() * 0.03;
+  const stateTax = Math.round(basePremium * stateTaxRate * 100) / 100;
+  lineItems.push({
+    id: uuidv4(),
+    description: 'State Premium Tax',
+    type: 'tax',
+    amount: stateTax,
+    taxable: false,
+  });
+  
+  // Policy fee (one-time or recurring)
+  const policyFee = isFirstInvoice ? 25 : 5;
+  lineItems.push({
+    id: uuidv4(),
+    description: isFirstInvoice ? 'Policy Issuance Fee' : 'Policy Service Fee',
+    type: 'fee',
+    amount: policyFee,
+    taxable: false,
+  });
+  
+  // Catastrophe Assessment Fee (common in certain states)
+  if (Math.random() > 0.5) {
+    const catFee = Math.round(basePremium * 0.01 * 100) / 100;
+    lineItems.push({
+      id: uuidv4(),
+      description: 'Catastrophe Assessment Fee',
+      type: 'fee',
+      amount: catFee,
+      taxable: false,
+    });
+  }
+  
+  // Fire Marshal Tax (for property insurance)
+  if (policyType.includes('Property') && Math.random() > 0.3) {
+    const fireMarshalTax = Math.round(basePremium * 0.0075 * 100) / 100;
+    lineItems.push({
+      id: uuidv4(),
+      description: 'Fire Marshal Tax',
+      type: 'tax',
+      amount: fireMarshalTax,
+      taxable: false,
+    });
+  }
+  
+  // Municipal Tax (varies by location)
+  if (Math.random() > 0.6) {
+    const municipalTax = Math.round(basePremium * 0.005 * 100) / 100;
+    lineItems.push({
+      id: uuidv4(),
+      description: 'Municipal Tax',
+      type: 'tax',
+      amount: municipalTax,
+      taxable: false,
+    });
+  }
+  
+  // Electronic Filing Fee
+  if (Math.random() > 0.7) {
+    lineItems.push({
+      id: uuidv4(),
+      description: 'Electronic Filing Fee',
+      type: 'fee',
+      amount: 2.50,
+      taxable: false,
+    });
+  }
+  
+  // Installment Fee (for non-annual payments)
+  if (Math.random() > 0.4 && !isFirstInvoice) {
+    lineItems.push({
+      id: uuidv4(),
+      description: 'Installment Processing Fee',
+      type: 'fee',
+      amount: 3.00,
+      taxable: false,
+    });
+  }
+  
+  // FIGA (Financial Insurance Guaranty Association) Assessment
+  if (Math.random() > 0.5) {
+    const figaFee = Math.round(basePremium * 0.002 * 100) / 100;
+    lineItems.push({
+      id: uuidv4(),
+      description: 'FIGA Assessment',
+      type: 'fee',
+      amount: figaFee,
+      taxable: false,
+    });
+  }
+  
+  // Broker Fee (if applicable)
+  if (Math.random() > 0.6) {
+    lineItems.push({
+      id: uuidv4(),
+      description: 'Broker Service Fee',
+      type: 'fee',
+      amount: 15.00,
+      taxable: false,
+    });
+  }
+  
+  // Calculate subtotal and total
+  const subtotal = lineItems.reduce((sum, item) => sum + item.amount, 0);
+  const total = Math.round(subtotal * 100) / 100;
+  
+  return {
+    lineItems,
+    subtotal,
+    total,
+  };
+};
+
 // Generate mock users
 export const generateMockUsers = () => {
   const users = [];
@@ -141,8 +267,15 @@ export const generateMockInvoices = (policies: any[]) => {
         status = Math.random() > 0.3 ? 'paid' : Math.random() > 0.5 ? 'overdue' : 'partially_paid';
       }
       
-      const invoiceAmount = policy.paymentFrequency === 'annual' ? policy.premiumAmount :
-                           policy.premiumAmount / invoiceCount;
+      const basePremium = policy.paymentFrequency === 'annual' ? policy.premiumAmount :
+                          policy.premiumAmount / invoiceCount;
+      
+      // Generate line items
+      const { lineItems, subtotal, total } = generateInvoiceLineItems(
+        basePremium, 
+        policy.policyType,
+        i === 0 // First invoice gets additional fees
+      );
       
       invoices.push({
         id: uuidv4(),
@@ -151,7 +284,10 @@ export const generateMockInvoices = (policies: any[]) => {
         policy,
         clientId: policy.clientId,
         client: policy.client,
-        amount: Math.round(invoiceAmount * 100) / 100,
+        basePremium: Math.round(basePremium * 100) / 100,
+        amount: total,
+        lineItems,
+        subtotal,
         dueDate,
         status,
         billingPeriodStart,
