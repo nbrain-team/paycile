@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Modal from '../components/Modal';
 
 export default function InvoicesPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [showPayModal, setShowPayModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
+  const [paymentAmount, setPaymentAmount] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['invoices', page, statusFilter],
@@ -36,6 +40,24 @@ export default function InvoicesPage() {
     enabled: !!selectedInvoice?.id && showDetailModal,
   });
 
+  // Create payment mutation
+  const createPaymentMutation = useMutation({
+    mutationFn: async (paymentData: any) => {
+      const response = await api.post('/payments', paymentData);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      setShowPayModal(false);
+      setPaymentAmount('');
+      // Navigate to the payment detail page to show waterfall allocation
+      if (data.data?.id) {
+        navigate(`/payments/${data.data.id}`);
+      }
+    },
+  });
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid': return 'success';
@@ -46,11 +68,24 @@ export default function InvoicesPage() {
   };
 
   const handlePayment = () => {
-    if (selectedInvoice && paymentMethod) {
-      alert(`Processing payment for invoice ${selectedInvoice.invoiceNumber} - $${selectedInvoice.amount} via ${paymentMethod.replace('_', ' ')}`);
-      setShowPayModal(false);
-      // In a real app, this would integrate with payment processing
+    if (selectedInvoice && paymentMethod && paymentAmount) {
+      const amount = parseFloat(paymentAmount);
+      if (!isNaN(amount) && amount > 0) {
+        createPaymentMutation.mutate({
+          invoiceId: selectedInvoice.id,
+          clientId: selectedInvoice.clientId,
+          amount: amount,
+          paymentMethod: paymentMethod,
+          paymentDate: new Date().toISOString(),
+        });
+      }
     }
+  };
+
+  const openPayModal = (invoice: any) => {
+    setSelectedInvoice(invoice);
+    setPaymentAmount(invoice.amount.toString());
+    setShowPayModal(true);
   };
 
   const getLineItemTypeColor = (type: string) => {
@@ -201,10 +236,7 @@ export default function InvoicesPage() {
                       {invoice.status === 'sent' && (
                         <button 
                           className="text-success-600 hover:text-success-900"
-                          onClick={() => {
-                            setSelectedInvoice(invoice);
-                            setShowPayModal(true);
-                          }}
+                          onClick={() => openPayModal(invoice)}
                         >
                           Pay
                         </button>
@@ -264,6 +296,17 @@ export default function InvoicesPage() {
           </div>
           
           <div>
+            <label className="label">Payment Amount</label>
+            <input
+              type="number"
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value)}
+              className="input"
+              placeholder="Enter payment amount"
+            />
+          </div>
+
+          <div>
             <label className="label">Payment Method</label>
             <select
               value={paymentMethod}
@@ -287,8 +330,9 @@ export default function InvoicesPage() {
             <button
               onClick={handlePayment}
               className="btn-primary btn-sm"
+              disabled={createPaymentMutation.isPending || !paymentAmount || parseFloat(paymentAmount) <= 0}
             >
-              Process Payment
+              {createPaymentMutation.isPending ? 'Processing...' : 'Process Payment'}
             </button>
           </div>
         </div>

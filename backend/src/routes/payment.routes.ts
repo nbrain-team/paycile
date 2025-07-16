@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getMockData } from '../services/mockData.service';
+import { v4 as uuidv4 } from 'uuid';
 
 export const paymentRouter = Router();
 
@@ -84,5 +85,74 @@ paymentRouter.put('/:id', (req, res) => {
   res.json({
     success: true,
     data: payments[paymentIndex]
+  });
+});
+
+// Create new payment
+paymentRouter.post('/', (req, res) => {
+  const { invoiceId, clientId, amount, paymentMethod, paymentDate } = req.body;
+  const { payments, invoices, reconciliations, policies } = getMockData();
+  
+  // Find the invoice if provided
+  let invoice = null;
+  if (invoiceId) {
+    invoice = invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        error: 'Invoice not found'
+      });
+    }
+  }
+  
+  // Create the payment
+  const newPayment = {
+    id: uuidv4(),
+    paymentReference: `PAY-${new Date().getFullYear()}-${String(payments.length + 1).padStart(6, '0')}`,
+    clientId: clientId || invoice?.clientId,
+    client: invoice?.client,
+    amount: parseFloat(amount),
+    paymentMethod,
+    status: 'completed',
+    paymentDate: new Date(paymentDate || new Date()),
+    processorReference: `STRIPE-${Math.random().toString(36).substring(7)}`,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  
+  payments.push(newPayment);
+  
+  // Create reconciliation if invoice is provided
+  if (invoice) {
+    const newReconciliation = {
+      id: uuidv4(),
+      paymentId: newPayment.id,
+      payment: newPayment,
+      invoiceId: invoice.id,
+      invoice,
+      status: newPayment.amount >= invoice.amount ? 'matched' : 'partially_matched',
+      confidenceScore: 1.0, // Manual match has 100% confidence
+      manualNotes: `Payment created from invoice ${invoice.invoiceNumber}`,
+      reconciledBy: 'manual',
+      reconciledAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    reconciliations.push(newReconciliation);
+    
+    // Update invoice status
+    if (newPayment.amount >= invoice.amount) {
+      invoice.status = 'paid';
+    } else {
+      invoice.status = 'partially_paid';
+    }
+    invoice.updatedAt = new Date();
+  }
+  
+  res.status(201).json({
+    success: true,
+    data: newPayment,
+    message: 'Payment created successfully'
   });
 });
