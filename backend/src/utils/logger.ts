@@ -1,5 +1,4 @@
 import winston from 'winston';
-import path from 'path';
 
 const levels = {
   error: 0,
