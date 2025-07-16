@@ -8,11 +8,16 @@ invoiceRouter.get('/', (req, res) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
   const status = req.query.status as string;
+  const policyId = req.query.policyId as string;
   
   let filteredInvoices = [...invoices];
   
   if (status) {
     filteredInvoices = filteredInvoices.filter(i => i.status === status);
+  }
+  
+  if (policyId) {
+    filteredInvoices = filteredInvoices.filter(i => i.policyId === policyId);
   }
   
   // Sort by due date

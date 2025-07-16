@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 export default function PoliciesPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -117,7 +119,12 @@ export default function PoliciesPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button className="text-primary-600 hover:text-primary-900">View</button>
+                    <button 
+                      className="text-primary-600 hover:text-primary-900"
+                      onClick={() => navigate(`/policies/${policy.id}`)}
+                    >
+                      View
+                    </button>
                   </td>
                 </tr>
               ))
