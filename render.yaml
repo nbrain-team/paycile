@@ -2,7 +2,7 @@ services:
   # Backend API Service
   - type: web
     name: paycile-api
-    env: node
+    runtime: node
     region: oregon
     plan: starter
     rootDir: backend
@@ -19,16 +19,15 @@ services:
         generateValue: true
       - key: PORT
         value: 3001
+      - key: OPENAI_API_KEY
+        sync: false  # You'll need to add this manually
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: paycile-frontend
-          property: host
+        value: https://paycile-frontend.onrender.com  # Update after deployment
 
   # Frontend Static Site
   - type: web
     name: paycile-frontend
-    env: static
+    runtime: static
     region: oregon
     plan: starter
     rootDir: frontend
@@ -44,10 +43,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: paycile-api
-          property: host
+        value: https://paycile-api.onrender.com  # Update after deployment
 
 # PostgreSQL Database
 databases:
