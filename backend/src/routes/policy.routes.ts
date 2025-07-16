@@ -57,7 +57,7 @@ policyRouter.get('/:id', (req, res) => {
     });
   }
   
-  res.json({
+  return res.json({
     success: true,
     data: policy,
   });
