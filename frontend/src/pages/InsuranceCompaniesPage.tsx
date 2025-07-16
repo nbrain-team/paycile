@@ -35,20 +35,18 @@ interface InsuranceCompany {
 export default function InsuranceCompaniesPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<InsuranceCompany | null>(null);
   const [editedWaterfall, setEditedWaterfall] = useState<WaterfallItem[]>([]);
 
   // Fetch insurance companies for the current broker
   const { data, isLoading } = useQuery({
-    queryKey: ['insurance-companies', page, user?.id],
+    queryKey: ['insurance-companies', user?.id],
     queryFn: async () => {
       const response = await api.get('/insurance-companies', {
         params: {
-          page,
-          limit: 10,
+          page: 1,
+          limit: 100, // Get all companies for now
           brokerId: user?.id,
         },
       });
@@ -115,15 +113,6 @@ export default function InsuranceCompaniesPage() {
     <div className="space-y-6">
       <div className="sm:flex sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Insurance Companies</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary btn-md"
-        >
-          <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Company
-        </button>
       </div>
 
       {/* Companies List */}

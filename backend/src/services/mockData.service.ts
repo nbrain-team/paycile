@@ -146,6 +146,22 @@ const generateInvoiceLineItems = (basePremium: number, policyType: string, isFir
 export const generateMockUsers = () => {
   const users = [];
   
+  // Add admin user
+  users.push({
+    id: uuidv4(),
+    email: 'danny@nbrain.ai',
+    firstName: 'Danny',
+    lastName: 'Admin',
+    role: 'admin',
+    phone: '555-000-0001',
+    companyName: 'Paycile Admin',
+    isActive: true,
+    emailVerified: true,
+    twoFactorEnabled: true,
+    createdAt: new Date('2022-01-01'),
+    updatedAt: new Date(),
+  });
+  
   // Add brokers
   const brokerIds = [];
   for (let i = 0; i < 3; i++) {
