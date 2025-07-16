@@ -8,7 +8,7 @@ export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [showReconcileModal, setShowReconcileModal] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [selectedPayment] = useState<any>(null);
   const [reconcileInvoiceId, setReconcileInvoiceId] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -35,15 +35,6 @@ export default function PaymentsPage() {
     },
     enabled: !!data?.data?.length,
   });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'success';
-      case 'failed': return 'error';
-      case 'pending': return 'warning';
-      default: return 'secondary';
-    }
-  };
 
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {

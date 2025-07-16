@@ -65,8 +65,8 @@ export default function PaymentDetailPage() {
     sortedWaterfall.forEach(waterfallItem => {
       // Calculate total required for this type
       const requiredAmount = lineItems
-        .filter(item => item.type === waterfallItem.type)
-        .reduce((sum, item) => sum + item.amount, 0);
+        .filter((item: any) => item.type === waterfallItem.type)
+        .reduce((sum: number, item: any) => sum + item.amount, 0);
 
       // Allocate payment
       const allocated = Math.min(remainingPayment, requiredAmount);
