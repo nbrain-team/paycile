@@ -1,9 +1,14 @@
 import OpenAI from 'openai';
 import { logger } from '../utils/logger';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+// Only initialize OpenAI if API key is available
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 const SYSTEM_PROMPT = `You are an expert insurance regulatory assistant helping insurance brokers with questions about policies, payments, and regulatory compliance. 
 
@@ -87,6 +92,14 @@ export class ChatService {
 
   async chat(request: ChatRequest): Promise<{ response: string; requiresState: boolean }> {
     try {
+      // Check if OpenAI is configured
+      if (!openai) {
+        return {
+          response: 'The AI assistant is currently unavailable. Please configure the OpenAI API key to enable this feature.',
+          requiresState: false,
+        };
+      }
+
       const { message, conversationHistory = [] } = request;
       
       // Check if the message contains a state
