@@ -90,8 +90,12 @@ export default function Layout() {
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-soft">
-        <div className="flex h-16 items-center justify-center border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-primary-600">Paycile</h1>
+        <div className="flex h-20 items-center justify-center border-b border-gray-200 pt-5">
+          <img 
+            src="/paycile-logo.png" 
+            alt="Paycile" 
+            className="h-10 w-auto"
+          />
         </div>
         
         <nav className="mt-5 px-2">
