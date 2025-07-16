@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
+import Modal from '../components/Modal';
 
 export default function ReconciliationPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [selectedReconciliation, setSelectedReconciliation] = useState<any>(null);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [showManualMatchModal, setShowManualMatchModal] = useState(false);
+  const [disputeNotes, setDisputeNotes] = useState('');
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['reconciliations', page, statusFilter],
@@ -19,6 +25,32 @@ export default function ReconciliationPage() {
       return response.data;
     },
   });
+
+  const handleAcceptSuggestion = (reconciliation: any) => {
+    const topSuggestion = reconciliation.aiSuggestions?.suggestedMatches?.[0];
+    if (topSuggestion) {
+      alert(`Accepting AI suggestion: Invoice ${topSuggestion.invoiceId?.slice(-8)} with ${Math.round(topSuggestion.confidence * 100)}% confidence`);
+      // In a real app, this would make an API call to update the reconciliation
+    }
+  };
+
+  const handleResolveDispute = () => {
+    if (selectedReconciliation && disputeNotes) {
+      alert(`Resolving dispute for payment ${selectedReconciliation.payment?.paymentReference} with notes: ${disputeNotes}`);
+      setShowDisputeModal(false);
+      setDisputeNotes('');
+      // In a real app, this would make an API call
+    }
+  };
+
+  const handleManualMatch = () => {
+    if (selectedReconciliation && selectedInvoiceId) {
+      alert(`Manually matching payment ${selectedReconciliation.payment?.paymentReference} to invoice ${selectedInvoiceId}`);
+      setShowManualMatchModal(false);
+      setSelectedInvoiceId('');
+      // In a real app, this would make an API call
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -239,12 +271,33 @@ export default function ReconciliationPage() {
                 <div className="flex space-x-2">
                   {reconciliation.status === 'unmatched' && (
                     <>
-                      <button className="btn-outline btn-sm">Manual Match</button>
-                      <button className="btn-primary btn-sm">Accept AI Suggestion</button>
+                      <button 
+                        className="btn-outline btn-sm"
+                        onClick={() => {
+                          setSelectedReconciliation(reconciliation);
+                          setShowManualMatchModal(true);
+                        }}
+                      >
+                        Manual Match
+                      </button>
+                      <button 
+                        className="btn-primary btn-sm"
+                        onClick={() => handleAcceptSuggestion(reconciliation)}
+                      >
+                        Accept AI Suggestion
+                      </button>
                     </>
                   )}
                   {reconciliation.status === 'disputed' && (
-                    <button className="btn-outline btn-sm">Resolve Dispute</button>
+                    <button 
+                      className="btn-outline btn-sm"
+                      onClick={() => {
+                        setSelectedReconciliation(reconciliation);
+                        setShowDisputeModal(true);
+                      }}
+                    >
+                      Resolve Dispute
+                    </button>
                   )}
                   <button className="text-primary-600 hover:text-primary-900 text-sm font-medium">
                     View Details
@@ -290,6 +343,87 @@ export default function ReconciliationPage() {
           </div>
         </div>
       )}
+
+      {/* Dispute Resolution Modal */}
+      <Modal
+        isOpen={showDisputeModal}
+        onClose={() => setShowDisputeModal(false)}
+        title="Resolve Dispute"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Resolve the dispute for payment {selectedReconciliation?.payment?.paymentReference}
+          </p>
+          <div>
+            <label className="label">Resolution Notes</label>
+            <textarea
+              value={disputeNotes}
+              onChange={(e) => setDisputeNotes(e.target.value)}
+              className="input"
+              rows={4}
+              placeholder="Explain the resolution..."
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowDisputeModal(false)}
+              className="btn-outline btn-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleResolveDispute}
+              className="btn-primary btn-sm"
+              disabled={!disputeNotes}
+            >
+              Resolve Dispute
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Manual Match Modal */}
+      <Modal
+        isOpen={showManualMatchModal}
+        onClose={() => setShowManualMatchModal(false)}
+        title="Manual Match"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Manually match payment {selectedReconciliation?.payment?.paymentReference}
+          </p>
+          <div>
+            <label className="label">Select Invoice</label>
+            <select
+              value={selectedInvoiceId}
+              onChange={(e) => setSelectedInvoiceId(e.target.value)}
+              className="input"
+            >
+              <option value="">Choose an invoice...</option>
+              {selectedReconciliation?.aiSuggestions?.suggestedMatches?.map((match: any) => (
+                <option key={match.invoiceId} value={match.invoiceId}>
+                  Invoice #{match.invoiceId?.slice(-8)} - {Math.round(match.confidence * 100)}% confidence
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowManualMatchModal(false)}
+              className="btn-outline btn-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleManualMatch}
+              className="btn-primary btn-sm"
+              disabled={!selectedInvoiceId}
+            >
+              Match Invoice
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

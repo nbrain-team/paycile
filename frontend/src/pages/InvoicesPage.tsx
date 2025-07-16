@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
+import Modal from '../components/Modal';
 
 export default function InvoicesPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [paymentMethod, setPaymentMethod] = useState('credit_card');
 
   const { data, isLoading } = useQuery({
     queryKey: ['invoices', page, statusFilter],
@@ -26,6 +30,14 @@ export default function InvoicesPage() {
       case 'overdue': return 'error';
       case 'partially_paid': return 'warning';
       default: return 'secondary';
+    }
+  };
+
+  const handlePayment = () => {
+    if (selectedInvoice && paymentMethod) {
+      alert(`Processing payment for invoice ${selectedInvoice.invoiceNumber} - $${selectedInvoice.amount} via ${paymentMethod.replace('_', ' ')}`);
+      setShowPayModal(false);
+      // In a real app, this would integrate with payment processing
     }
   };
 
@@ -158,7 +170,15 @@ export default function InvoicesPage() {
                     <div className="flex space-x-2">
                       <button className="text-primary-600 hover:text-primary-900">View</button>
                       {invoice.status === 'sent' && (
-                        <button className="text-success-600 hover:text-success-900">Pay</button>
+                        <button 
+                          className="text-success-600 hover:text-success-900"
+                          onClick={() => {
+                            setSelectedInvoice(invoice);
+                            setShowPayModal(true);
+                          }}
+                        >
+                          Pay
+                        </button>
                       )}
                     </div>
                   </td>
@@ -194,6 +214,56 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
+
+      {/* Payment Modal */}
+      <Modal
+        isOpen={showPayModal}
+        onClose={() => setShowPayModal(false)}
+        title="Pay Invoice"
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded">
+            <p className="text-sm font-medium text-gray-900">
+              Invoice: {selectedInvoice?.invoiceNumber}
+            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">
+              ${selectedInvoice?.amount?.toLocaleString()}
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              Due: {selectedInvoice && new Date(selectedInvoice.dueDate).toLocaleDateString()}
+            </p>
+          </div>
+          
+          <div>
+            <label className="label">Payment Method</label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="input"
+            >
+              <option value="credit_card">Credit Card</option>
+              <option value="ach">ACH Transfer</option>
+              <option value="check">Check</option>
+              <option value="wire">Wire Transfer</option>
+            </select>
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowPayModal(false)}
+              className="btn-outline btn-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handlePayment}
+              className="btn-primary btn-sm"
+            >
+              Process Payment
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

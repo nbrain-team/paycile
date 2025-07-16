@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
+import Modal from '../components/Modal';
 
 export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [showReconcileModal, setShowReconcileModal] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [reconcileInvoiceId, setReconcileInvoiceId] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['payments', page, statusFilter],
@@ -75,6 +79,15 @@ export default function PaymentsPage() {
   const totalAmount = data?.data?.reduce((sum: number, payment: any) => sum + payment.amount, 0) || 0;
   const completedAmount = data?.data?.filter((p: any) => p.status === 'completed')
     .reduce((sum: number, payment: any) => sum + payment.amount, 0) || 0;
+
+  const handleReconcile = () => {
+    if (selectedPayment && reconcileInvoiceId) {
+      alert(`Reconciling payment ${selectedPayment.paymentReference} with invoice ${reconcileInvoiceId}`);
+      setShowReconcileModal(false);
+      setReconcileInvoiceId('');
+      // In a real app, this would make an API call to create a reconciliation
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -220,7 +233,15 @@ export default function PaymentsPage() {
                       <div className="flex space-x-2">
                         <button className="text-primary-600 hover:text-primary-900">View</button>
                         {reconciliationStatus === 'unmatched' && (
-                          <button className="text-secondary-600 hover:text-secondary-900">Reconcile</button>
+                          <button 
+                            className="text-secondary-600 hover:text-secondary-900"
+                            onClick={() => {
+                              setSelectedPayment(payment);
+                              setShowReconcileModal(true);
+                            }}
+                          >
+                            Reconcile
+                          </button>
                         )}
                       </div>
                     </td>
@@ -257,6 +278,44 @@ export default function PaymentsPage() {
           </div>
         </div>
       )}
+
+      {/* Reconcile Modal */}
+      <Modal
+        isOpen={showReconcileModal}
+        onClose={() => setShowReconcileModal(false)}
+        title="Reconcile Payment"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Reconcile payment {selectedPayment?.paymentReference} - ${selectedPayment?.amount?.toLocaleString()}
+          </p>
+          <div>
+            <label className="label">Invoice ID</label>
+            <input
+              type="text"
+              value={reconcileInvoiceId}
+              onChange={(e) => setReconcileInvoiceId(e.target.value)}
+              className="input"
+              placeholder="Enter invoice number..."
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowReconcileModal(false)}
+              className="btn-outline btn-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleReconcile}
+              className="btn-primary btn-sm"
+              disabled={!reconcileInvoiceId}
+            >
+              Reconcile
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
