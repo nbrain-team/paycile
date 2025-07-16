@@ -28,8 +28,7 @@ services:
   - type: web
     name: paycile-frontend
     runtime: static
-    region: oregon
-    plan: starter
+    plan: starter  # Remove region - static sites don't support it
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
