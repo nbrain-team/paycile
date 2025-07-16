@@ -9,6 +9,7 @@ import { invoiceRouter } from './routes/invoice.routes';
 import { paymentRouter } from './routes/payment.routes';
 import { reconciliationRouter } from './routes/reconciliation.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
+import { chatRouter } from './routes/chat.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { logger } from './utils/logger';
 
@@ -28,10 +29,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// API Routes
+// Routes
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
 app.use('/api/policies', policyRouter);
@@ -39,8 +40,9 @@ app.use('/api/invoices', invoiceRouter);
 app.use('/api/payments', paymentRouter);
 app.use('/api/reconciliations', reconciliationRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/chat', chatRouter);
 
-// Error handling middleware
+// Error handling
 app.use(errorHandler);
 
 // Start server

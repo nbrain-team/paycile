@@ -8,6 +8,7 @@ import InvoicesPage from './pages/InvoicesPage';
 import PaymentsPage from './pages/PaymentsPage';
 import ReconciliationPage from './pages/ReconciliationPage';
 import ClientsPage from './pages/ClientsPage';
+import ChatPage from './pages/ChatPage';
 import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
 
@@ -30,6 +31,7 @@ function App() {
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="reconciliation" element={<ReconciliationPage />} />
           <Route path="clients" element={<ClientsPage />} />
+          <Route path="chat" element={<ChatPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
