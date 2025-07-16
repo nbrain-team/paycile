@@ -4,7 +4,7 @@ services:
     name: paycile-api
     runtime: node
     region: oregon
-    plan: starter
+    plan: free  # Changed from starter to free
     rootDir: backend
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -28,7 +28,7 @@ services:
   - type: web
     name: paycile-frontend
     runtime: static
-    plan: starter  # Remove region - static sites don't support it
+    plan: free  # Changed from starter to free
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
@@ -48,5 +48,5 @@ services:
 databases:
   - name: paycile-db
     region: oregon
-    plan: starter
+    plan: free  # Changed from starter to free (or use 'standard' for paid tier)
     postgresMajorVersion: 15 
