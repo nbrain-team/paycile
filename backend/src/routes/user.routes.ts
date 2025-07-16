@@ -7,53 +7,54 @@ export const userRouter = Router();
 userRouter.get('/', (req, res) => {
   const { users, policies } = getMockData();
   const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 20;
+  const limit = parseInt(req.query.limit as string) || 10;
   const role = req.query.role as string;
-  const search = req.query.search as string;
   const brokerId = req.query.brokerId as string;
+  const search = req.query.search as string;
   
-  // Filter by role if specified
-  let filteredUsers = role ? users.filter(u => u.role === role) : [...users];
+  let filteredUsers = [...users];
   
-  // Filter by brokerId for agents
+  if (role) {
+    filteredUsers = filteredUsers.filter(u => u.role === role);
+  }
+  
   if (brokerId) {
     filteredUsers = filteredUsers.filter(u => u.brokerId === brokerId);
   }
   
-  // Filter by search term if provided
   if (search) {
     const searchLower = search.toLowerCase();
     filteredUsers = filteredUsers.filter(u => 
       u.firstName.toLowerCase().includes(searchLower) ||
       u.lastName.toLowerCase().includes(searchLower) ||
-      u.email.toLowerCase().includes(searchLower) ||
-      (u.companyName && u.companyName.toLowerCase().includes(searchLower))
+      u.email.toLowerCase().includes(searchLower)
     );
   }
   
-  // Calculate policy counts and total premiums for each user
-  const usersWithStats = filteredUsers.map(user => {
-    const userPolicies = policies.filter(p => p.clientId === user.id);
-    const totalPremium = userPolicies.reduce((sum, p) => sum + (p.premiumAmount || 0), 0);
-    
-    return {
-      ...user,
-      policyCount: userPolicies.length,
-      totalPremium
-    };
-  });
-  
-  // Sort by created date descending
-  usersWithStats.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  
-  const total = usersWithStats.length;
+  const total = filteredUsers.length;
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
-  const paginatedUsers = usersWithStats.slice(startIndex, endIndex);
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+  
+  // If fetching agents, include policy data
+  const usersWithPolicyData = paginatedUsers.map(user => {
+    if (user.role === 'agent') {
+      const agentPolicies = policies.filter(p => p.agentId === user.id);
+      const totalPremium = agentPolicies.reduce((sum, p) => sum + (p.premiumAmount || 0), 0);
+      
+      return {
+        ...user,
+        policyCount: agentPolicies.length,
+        totalPremium,
+        totalClients: new Set(agentPolicies.map(p => p.clientId)).size,
+      };
+    }
+    return user;
+  });
   
   res.json({
     success: true,
-    data: paginatedUsers,
+    data: usersWithPolicyData,
     meta: {
       page,
       limit,

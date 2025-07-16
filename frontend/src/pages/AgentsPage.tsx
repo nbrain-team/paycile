@@ -91,6 +91,34 @@ export default function AgentsPage() {
         </button>
       </div>
 
+      {/* Summary Statistics */}
+      {data?.data && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="card">
+            <p className="text-sm font-medium text-gray-600">Total Agents</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900">{data.meta.total}</p>
+          </div>
+          <div className="card">
+            <p className="text-sm font-medium text-gray-600">Total Policies</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900">
+              {data.data.reduce((sum: number, agent: any) => sum + (agent.policyCount || 0), 0)}
+            </p>
+          </div>
+          <div className="card">
+            <p className="text-sm font-medium text-gray-600">Total Clients</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900">
+              {data.data.reduce((sum: number, agent: any) => sum + (agent.totalClients || 0), 0)}
+            </p>
+          </div>
+          <div className="card">
+            <p className="text-sm font-medium text-gray-600">Total Premium</p>
+            <p className="mt-1 text-2xl font-semibold text-success-600">
+              ${data.data.reduce((sum: number, agent: any) => sum + (agent.totalPremium || 0), 0).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Search Bar */}
       <div className="max-w-md">
         <input
@@ -141,10 +169,14 @@ export default function AgentsPage() {
                   </div>
                 </div>
                 
-                <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 gap-4 text-sm">
+                <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-sm">
                   <div>
                     <p className="text-gray-500">Policies</p>
                     <p className="font-semibold text-gray-900">{agent.policyCount || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Clients</p>
+                    <p className="font-semibold text-gray-900">{agent.totalClients || 0}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Total Premium</p>
