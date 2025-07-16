@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../services/api';
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const response = await axios.get('/api/dashboard/stats');
+      const response = await api.get('/dashboard/stats');
       return response.data;
     },
   });

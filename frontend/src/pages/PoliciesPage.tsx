@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import api from '../services/api';
 
 export default function PoliciesPage() {
   const [page, setPage] = useState(1);
@@ -10,7 +10,7 @@ export default function PoliciesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['policies', page, search, statusFilter],
     queryFn: async () => {
-      const response = await axios.get('/api/policies', {
+      const response = await api.get('/policies', {
         params: {
           page,
           limit: 20,

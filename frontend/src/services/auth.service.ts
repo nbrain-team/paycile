@@ -1,23 +1,5 @@
-import axios from 'axios';
+import api from './api';
 import { LoginResponse, RegisterRequest, User } from '../../../shared/types';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-const api = axios.create({
-  baseURL: `${API_URL}/api`,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth-token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 export const authService = {
   async login(email: string, password: string): Promise<LoginResponse> {
