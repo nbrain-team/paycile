@@ -145,16 +145,19 @@ const generateInvoiceLineItems = (basePremium: number, policyType: string, isFir
 // Generate mock users
 export const generateMockUsers = () => {
   const users = [];
+  const brokerIds = [];
   
-  // Add admin user
+  // Add Danny as the primary broker
+  const dannyId = uuidv4();
+  brokerIds.push(dannyId);
   users.push({
-    id: uuidv4(),
+    id: dannyId,
     email: 'danny@nbrain.ai',
     firstName: 'Danny',
-    lastName: 'Admin',
-    role: 'admin',
+    lastName: 'DeMichele',
+    role: 'broker',
     phone: '555-000-0001',
-    companyName: 'Paycile Admin',
+    companyName: 'Paycile Insurance Brokers',
     isActive: true,
     emailVerified: true,
     twoFactorEnabled: true,
@@ -162,9 +165,8 @@ export const generateMockUsers = () => {
     updatedAt: new Date(),
   });
   
-  // Add brokers
-  const brokerIds = [];
-  for (let i = 0; i < 3; i++) {
+  // Add additional brokers
+  for (let i = 0; i < 2; i++) {
     const brokerId = uuidv4();
     brokerIds.push(brokerId);
     users.push({
@@ -202,7 +204,7 @@ export const generateMockUsers = () => {
       firstName: agent.firstName,
       lastName: agent.lastName,
       role: 'agent',
-      brokerId: randomElement(brokerIds), // Assign agent to a broker
+      brokerId: brokerIds[0], // Assign all agents to Danny's brokerage
       phone: `555-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
       companyName: 'Paycile Insurance Agency',
       isActive: true,

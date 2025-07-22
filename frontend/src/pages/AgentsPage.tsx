@@ -17,22 +17,26 @@ export default function AgentsPage() {
     phone: '',
   });
 
-  // Fetch agents for the current broker
+  // Fetch agents - show all for admin, broker-specific for brokers
   const { data, isLoading } = useQuery({
-    queryKey: ['agents', page, searchTerm, user?.id],
+    queryKey: ['agents', page, searchTerm, user?.id, user?.role],
     queryFn: async () => {
-      const response = await api.get('/users', {
-        params: {
-          page,
-          limit: 12,
-          role: 'agent',
-          brokerId: user?.id,
-          search: searchTerm,
-        },
-      });
+      const params: any = {
+        page,
+        limit: 12,
+        role: 'agent',
+        search: searchTerm,
+      };
+      
+      // Only filter by brokerId for broker users, not admin
+      if (user?.role === 'broker') {
+        params.brokerId = user.id;
+      }
+      
+      const response = await api.get('/users', { params });
       return response.data;
     },
-    enabled: user?.role === 'broker',
+    enabled: user?.role === 'broker' || user?.role === 'admin',
   });
 
   // Create agent mutation
@@ -68,10 +72,10 @@ export default function AgentsPage() {
     }
   };
 
-  if (user?.role !== 'broker') {
+  if (user?.role !== 'broker' && user?.role !== 'admin') {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Access restricted to brokers only</p>
+        <p className="text-gray-500">Access restricted to brokers and administrators</p>
       </div>
     );
   }
