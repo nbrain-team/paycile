@@ -42,11 +42,17 @@ export default function InsightsPage() {
 
   // Fetch insights data
   const { data: insights, isLoading } = useQuery({
-    queryKey: ['insights', user?.id],
+    queryKey: ['insights', user?.id, user?.role],
     queryFn: async () => {
-      const response = await api.get('/insights');
+      const response = await api.get('/insights', {
+        params: {
+          userId: user?.id,
+          userRole: user?.role,
+        },
+      });
       return response.data.data;
     },
+    enabled: !!user,
   });
 
   const handleAIQuery = async () => {

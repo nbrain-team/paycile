@@ -5,6 +5,55 @@ export const insightsRouter = Router();
 
 insightsRouter.get('/', (req, res) => {
   const { payments, invoices, policies, users, reconciliations } = getMockData();
+  const userId = req.query.userId as string;
+  const userRole = req.query.userRole as string;
+  
+  // Get user to determine data scope
+  const currentUser = userId ? users.find(u => u.id === userId) : null;
+  
+  // Filter data based on user role
+  let filteredPolicies = policies;
+  let filteredInvoices = invoices;
+  let filteredPayments = payments;
+  let filteredUsers = users;
+  
+  if (userRole === 'broker' && currentUser) {
+    // Get all agents under this broker
+    const brokerAgents = users.filter(u => u.role === 'agent' && u.brokerId === currentUser.id);
+    const agentIds = brokerAgents.map(a => a.id);
+    
+    // Filter policies by broker's agents
+    filteredPolicies = policies.filter(p => agentIds.includes(p.agentId));
+    
+    // Filter invoices by broker's policies
+    const policyIds = filteredPolicies.map(p => p.id);
+    filteredInvoices = invoices.filter(inv => policyIds.includes(inv.policyId));
+    
+    // Filter payments by broker's invoices/reconciliations
+    const invoiceIds = filteredInvoices.map(inv => inv.id);
+    filteredPayments = payments.filter(p => {
+      const recon = reconciliations.find(r => r.paymentId === p.id);
+      return recon && invoiceIds.includes(recon.invoiceId);
+    });
+    
+    // Only show broker's agents in metrics
+    filteredUsers = users.filter(u => 
+      u.role === 'client' || 
+      (u.role === 'agent' && u.brokerId === currentUser.id) ||
+      u.id === currentUser.id
+    );
+  } else if (userRole === 'agent' && currentUser) {
+    // Filter by specific agent
+    filteredPolicies = policies.filter(p => p.agentId === currentUser.id);
+    const policyIds = filteredPolicies.map(p => p.id);
+    filteredInvoices = invoices.filter(inv => policyIds.includes(inv.policyId));
+    
+    const invoiceIds = filteredInvoices.map(inv => inv.id);
+    filteredPayments = payments.filter(p => {
+      const recon = reconciliations.find(r => r.paymentId === p.id);
+      return recon && invoiceIds.includes(recon.invoiceId);
+    });
+  }
   
   // Calculate metrics
   const now = new Date();
@@ -12,17 +61,17 @@ insightsRouter.get('/', (req, res) => {
   const thisMonth = new Date(now.getFullYear(), now.getMonth());
   
   // Total revenue (only completed payments)
-  const totalRevenue = payments
+  const totalRevenue = filteredPayments
     .filter(p => p.status === 'completed')
     .reduce((sum, p) => sum + p.amount, 0);
     
   // Revenue this month
-  const revenueThisMonth = payments
+  const revenueThisMonth = filteredPayments
     .filter(p => p.status === 'completed' && new Date(p.paymentDate) >= thisMonth)
     .reduce((sum, p) => sum + p.amount, 0);
     
   // Revenue last month
-  const revenueLastMonth = payments
+  const revenueLastMonth = filteredPayments
     .filter(p => p.status === 'completed' && new Date(p.paymentDate) >= lastMonth && new Date(p.paymentDate) < thisMonth)
     .reduce((sum, p) => sum + p.amount, 0);
     
@@ -31,14 +80,14 @@ insightsRouter.get('/', (req, res) => {
     : 0;
   
   // Active policies
-  const activePolicies = policies.filter(p => p.status === 'active').length;
-  const newPoliciesThisMonth = policies.filter(p => 
+  const activePolicies = filteredPolicies.filter(p => p.status === 'active').length;
+  const newPoliciesThisMonth = filteredPolicies.filter(p => 
     new Date(p.createdAt) >= thisMonth
   ).length;
   
   // Collection rate
-  const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalCollected = payments
+  const totalInvoiced = filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0);
+  const totalCollected = filteredPayments
     .filter(p => p.status === 'completed')
     .reduce((sum, p) => sum + p.amount, 0);
   const collectionRate = totalInvoiced > 0 
@@ -46,16 +95,16 @@ insightsRouter.get('/', (req, res) => {
     : 0;
   
   // Overdue amount
-  const overdueInvoices = invoices.filter(inv => 
+  const overdueInvoices = filteredInvoices.filter(inv => 
     inv.status === 'overdue' || 
     (inv.status === 'sent' && new Date(inv.dueDate) < now)
   );
   const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0);
   
   // Average days to pay
-  const paidInvoices = invoices.filter(inv => inv.status === 'paid');
+  const paidInvoices = filteredInvoices.filter(inv => inv.status === 'paid');
   const daysToPay = paidInvoices.map(inv => {
-    const payment = payments.find(p => {
+    const payment = filteredPayments.find(p => {
       const recon = reconciliations.find(r => r.invoiceId === inv.id && r.paymentId === p.id);
       return recon;
     });
@@ -81,7 +130,7 @@ insightsRouter.get('/', (req, res) => {
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i);
     const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-    const monthRevenue = payments
+    const monthRevenue = filteredPayments
       .filter(p => {
         const paymentDate = new Date(p.paymentDate);
         return p.status === 'completed' &&
@@ -101,7 +150,7 @@ insightsRouter.get('/', (req, res) => {
     check: 0,
     wire: 0,
   };
-  payments.forEach(p => {
+  filteredPayments.forEach(p => {
     if (p.paymentMethod in paymentMethodCounts) {
       paymentMethodCounts[p.paymentMethod as keyof typeof paymentMethodCounts]++;
     }
@@ -110,7 +159,7 @@ insightsRouter.get('/', (req, res) => {
   
   // Policy types distribution
   const policyTypeCounts: Record<string, number> = {};
-  policies.forEach(p => {
+  filteredPolicies.forEach(p => {
     policyTypeCounts[p.policyType] = (policyTypeCounts[p.policyType] || 0) + 1;
   });
   const policyTypes = {
@@ -128,12 +177,12 @@ insightsRouter.get('/', (req, res) => {
   const reconciliationStatus = Object.values(reconStatusCounts);
   
   // Agent performance - Get actual agents
-  const agents = users.filter(u => u.role === 'agent');
+  const agents = filteredUsers.filter(u => u.role === 'agent');
   
   // Calculate metrics for each agent based on actual data
   const agentMetrics = agents.map(agent => {
     // Get all policies for this agent
-    const agentPolicies = policies.filter(p => p.agentId === agent.id);
+    const agentPolicies = filteredPolicies.filter(p => p.agentId === agent.id);
     
     // Calculate total premium from agent's policies
     const agentPremium = agentPolicies.reduce((sum, p) => sum + (p.premiumAmount || 0), 0);
@@ -142,14 +191,14 @@ insightsRouter.get('/', (req, res) => {
     const uniqueClients = new Set(agentPolicies.map(p => p.clientId)).size;
     
     // Calculate collected amount for this agent's policies
-    const agentInvoices = invoices.filter(inv => 
+    const agentInvoices = filteredInvoices.filter(inv => 
       agentPolicies.some(p => p.id === inv.policyId)
     );
     const agentCollected = agentInvoices
       .filter(inv => inv.status === 'paid' || inv.status === 'partially_paid')
       .reduce((sum, inv) => {
         // Find payments for this invoice
-        const invoicePayments = payments.filter(p => {
+        const invoicePayments = filteredPayments.filter(p => {
           const recon = reconciliations.find(r => r.invoiceId === inv.id && r.paymentId === p.id);
           return recon && p.status === 'completed';
         });
@@ -187,15 +236,15 @@ insightsRouter.get('/', (req, res) => {
   const agentRetention = agents.length > 0 ? Math.round((activeAgents / agents.length) * 100) : 100;
   
   // Client metrics
-  const clients = users.filter(u => u.role === 'client');
+  const clients = filteredUsers.filter(u => u.role === 'client');
   const clientSegments = [
     clients.filter(c => !c.companyName).length, // Individual
-    clients.filter(c => c.companyName && policies.filter(p => p.clientId === c.id).length < 5).length, // Small Business
-    clients.filter(c => c.companyName && policies.filter(p => p.clientId === c.id).length >= 5).length, // Enterprise
+    clients.filter(c => c.companyName && filteredPolicies.filter(p => p.clientId === c.id).length < 5).length, // Small Business
+    clients.filter(c => c.companyName && filteredPolicies.filter(p => p.clientId === c.id).length >= 5).length, // Enterprise
   ];
   
   // Payment behavior based on actual payment data
-  const onTimePayments = payments.filter(p => {
+  const onTimePayments = filteredPayments.filter(p => {
     const recon = reconciliations.find(r => r.paymentId === p.id);
     if (recon?.invoice) {
       const daysDiff = Math.floor(
@@ -207,7 +256,7 @@ insightsRouter.get('/', (req, res) => {
     return false;
   }).length;
   
-  const latePayments30 = payments.filter(p => {
+  const latePayments30 = filteredPayments.filter(p => {
     const recon = reconciliations.find(r => r.paymentId === p.id);
     if (recon?.invoice) {
       const daysDiff = Math.floor(
@@ -219,7 +268,7 @@ insightsRouter.get('/', (req, res) => {
     return false;
   }).length;
   
-  const latePaymentsOver30 = payments.filter(p => {
+  const latePaymentsOver30 = filteredPayments.filter(p => {
     const recon = reconciliations.find(r => r.paymentId === p.id);
     if (recon?.invoice) {
       const daysDiff = Math.floor(
@@ -231,7 +280,7 @@ insightsRouter.get('/', (req, res) => {
     return false;
   }).length;
   
-  const defaultedPayments = invoices.filter(inv => 
+  const defaultedPayments = filteredInvoices.filter(inv => 
     inv.status === 'overdue' && 
     Math.floor((now.getTime() - new Date(inv.dueDate).getTime()) / (1000 * 60 * 60 * 24)) > 90
   ).length;
@@ -240,7 +289,7 @@ insightsRouter.get('/', (req, res) => {
   
   // Calculate actual client metrics
   const avgPoliciesPerClient = clients.length > 0
-    ? policies.filter(p => p.status === 'active').length / clients.length
+    ? filteredPolicies.filter(p => p.status === 'active').length / clients.length
     : 0;
     
   const avgClientValue = clients.length > 0
@@ -276,10 +325,10 @@ insightsRouter.get('/', (req, res) => {
         : 'Focus on agent training and performance tracking.',
     },
     {
-      type: (paymentMethodCounts.ach / payments.length) >= 0.3 ? 'positive' : 'info',
+      type: (paymentMethodCounts.ach / filteredPayments.length) >= 0.3 ? 'positive' : 'info',
       title: 'Payment Method Optimization',
-      description: `${Math.round((paymentMethodCounts.ach / payments.length) * 100)}% of payments are via ACH, which has lower processing fees.`,
-      recommendation: (paymentMethodCounts.ach / payments.length) >= 0.3
+      description: `${Math.round((paymentMethodCounts.ach / filteredPayments.length) * 100)}% of payments are via ACH, which has lower processing fees.`,
+      recommendation: (paymentMethodCounts.ach / filteredPayments.length) >= 0.3
         ? 'Good ACH adoption rate. Continue promoting ACH to maximize cost savings.'
         : 'Encourage more clients to use ACH transfers to reduce transaction costs.',
     },
@@ -287,16 +336,16 @@ insightsRouter.get('/', (req, res) => {
   
   // Predictive analytics based on trends
   const defaultRisk = overdueInvoices.length > 0 
-    ? Math.round((defaultedPayments / invoices.length) * 100 * 10) / 10
+    ? Math.round((defaultedPayments / filteredInvoices.length) * 100 * 10) / 10
     : 0;
     
-  const expectedCollections = invoices
+  const expectedCollections = filteredInvoices
     .filter(inv => inv.status === 'sent')
     .reduce((sum, inv) => sum + inv.amount, 0) * (collectionRate / 100);
     
   const churnProbability = clients.length > 0
     ? Math.round((clients.filter(c => {
-        const clientPolicies = policies.filter(p => p.clientId === c.id);
+        const clientPolicies = filteredPolicies.filter(p => p.clientId === c.id);
         return clientPolicies.length > 0 && clientPolicies.every(p => p.status !== 'active');
       }).length / clients.length) * 100 * 10) / 10
     : 0;

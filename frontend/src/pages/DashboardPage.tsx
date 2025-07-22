@@ -1,13 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
+import { useAuthStore } from '../services/auth.store';
 
 export default function DashboardPage() {
+  const { user } = useAuthStore();
+  
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
+    queryKey: ['dashboard-stats', user?.id, user?.role],
     queryFn: async () => {
-      const response = await api.get('/dashboard/stats');
+      const response = await api.get('/dashboard/stats', {
+        params: {
+          userId: user?.id,
+          userRole: user?.role,
+        },
+      });
       return response.data;
     },
+    enabled: !!user,
   });
 
   if (isLoading) {
