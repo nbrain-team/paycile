@@ -296,6 +296,11 @@ export default function InsightsPage() {
                 options={{
                   ...chartOptions,
                   indexAxis: 'y' as const,
+                  scales: {
+                    x: {
+                      beginAtZero: true,
+                    },
+                  },
                 }}
               />
             </div>
@@ -306,7 +311,8 @@ export default function InsightsPage() {
             <div className="card">
               <h4 className="text-sm font-medium text-gray-900 mb-3">Top Performer</h4>
               <p className="text-lg font-semibold">{data.topAgent?.name || 'N/A'}</p>
-              <p className="text-sm text-gray-600">${data.topAgent?.premium?.toLocaleString() || 0} collected</p>
+              <p className="text-sm text-gray-600">${data.topAgent?.premium?.toLocaleString() || 0} in premiums</p>
+              <p className="text-xs text-gray-500 mt-1">{data.topAgent?.policies || 0} policies</p>
             </div>
             <div className="card">
               <h4 className="text-sm font-medium text-gray-900 mb-3">Average Premium per Agent</h4>
@@ -316,9 +322,77 @@ export default function InsightsPage() {
             <div className="card">
               <h4 className="text-sm font-medium text-gray-900 mb-3">Agent Retention</h4>
               <p className="text-lg font-semibold">{data.agentRetention || 0}%</p>
-              <p className="text-sm text-gray-600">Last 12 months</p>
+              <p className="text-sm text-gray-600">Based on active status</p>
             </div>
           </div>
+
+          {/* Detailed Agent Table */}
+          {data.agentMetrics && data.agentMetrics.length > 0 && (
+            <div className="card">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Agent Details</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Agent
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Policies
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Clients
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Premium
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Collected
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Conversion Rate
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {data.agentMetrics.map((agent: any) => (
+                      <tr key={agent.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{agent.name}</div>
+                            <div className="text-sm text-gray-500">{agent.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {agent.policies}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {agent.clients}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          ${agent.premium.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          ${agent.collected.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <span className="text-sm text-gray-900">{agent.conversionRate}%</span>
+                            <div className="ml-2 w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-primary-600 h-2 rounded-full"
+                                style={{ width: `${agent.conversionRate}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
