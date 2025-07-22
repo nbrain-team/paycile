@@ -14,6 +14,7 @@ import SettingsPage from './pages/SettingsPage';
 import AgentsPage from './pages/AgentsPage';
 import InsuranceCompaniesPage from './pages/InsuranceCompaniesPage';
 import InsightsPage from './pages/InsightsPage';
+import DataVerificationPage from './pages/DataVerificationPage';
 import Layout from './components/Layout';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
           <Route path="agents" element={<AgentsPage />} />
           <Route path="insurance-companies" element={<InsuranceCompaniesPage />} />
           <Route path="insights" element={<InsightsPage />} />
+          <Route path="verify" element={<DataVerificationPage />} />
           <Route path="chat" element={<ChatPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
