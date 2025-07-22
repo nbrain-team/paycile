@@ -1,6 +1,15 @@
-# Paycile - Insurance Payment Reconciliation Platform
+# Paycile - Insurance Premium Payment Management Platform
 
-An AI-powered SaaS platform for brokers, insurance agents, and policyholders to manage and reconcile insurance premium payments.
+Paycile is a modern, AI-powered SaaS platform designed to streamline insurance premium payment management and reconciliation for brokers, agents, and policyholders.
+
+## 📚 Documentation
+
+- **[Architecture Overview](./ARCHITECTURE.md)** - Comprehensive system architecture and technical documentation
+- **[Technology Stack](./TECHNOLOGY_STACK.md)** - Detailed breakdown of technologies and decision matrix
+- **[System Flows](./SYSTEM_FLOWS.md)** - Visual flow diagrams for core processes
+- **[Enhancement Ideas](./ENHANCEMENT_IDEAS.md)** - Future features and improvements roadmap
+
+## 🚀 Quick Start
 
 ## 🚀 Features
 
