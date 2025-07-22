@@ -11,6 +11,8 @@ import { reconciliationRouter } from './routes/reconciliation.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
 import { chatRouter } from './routes/chat.routes';
 import { insuranceCompanyRouter } from './routes/insurance-company.routes';
+import { insightsRouter } from './routes/insights.routes';
+import { aiRouter } from './routes/ai.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { logger } from './utils/logger';
 
@@ -40,6 +42,8 @@ app.use('/api/reconciliations', reconciliationRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/insurance-companies', insuranceCompanyRouter);
+app.use('/api/insights', insightsRouter);
+app.use('/api/ai', aiRouter);
 
 // Error handling
 app.use(errorHandler);
