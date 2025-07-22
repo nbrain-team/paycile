@@ -41,7 +41,7 @@ export default function InsightsPage() {
   const [isAiLoading, setIsAiLoading] = useState(false);
 
   // Fetch insights data
-  const { data: insights, isLoading } = useQuery({
+  const { data: insights, isLoading, refetch } = useQuery({
     queryKey: ['insights', user?.id, user?.role],
     queryFn: async () => {
       const response = await api.get('/insights', {
@@ -81,6 +81,18 @@ export default function InsightsPage() {
     } finally {
       setIsAiLoading(false);
     }
+  };
+
+  // Handle opening chat with pre-populated question
+  const openChatWithQuestion = (question: string) => {
+    setAiQuery(question);
+    setShowAIChat(true);
+    // Auto-submit the question after a brief delay
+    setTimeout(() => {
+      if (question) {
+        handleAIQuery();
+      }
+    }, 100);
   };
 
   // Chart options
@@ -480,7 +492,29 @@ export default function InsightsPage() {
       {activeTab === 'ai' && (
         <div className="space-y-6">
           <div className="card">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">AI-Generated Insights</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">AI-Generated Insights</h3>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => refetch()}
+                  className="btn-outline btn-sm"
+                >
+                  <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Insights
+                </button>
+                <button
+                  onClick={() => setShowAIChat(true)}
+                  className="btn-primary btn-sm"
+                >
+                  <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Ask Question
+                </button>
+              </div>
+            </div>
             <div className="space-y-4">
               {data.aiInsights?.map((insight: any, index: number) => (
                 <div key={index} className="p-4 bg-gray-50 rounded-lg">
@@ -510,6 +544,11 @@ export default function InsightsPage() {
                   </div>
                 </div>
               ))}
+              {(!data.aiInsights || data.aiInsights.length === 0) && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No insights available. Click "Refresh Insights" to generate new insights.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -531,6 +570,29 @@ export default function InsightsPage() {
                 <p className="mt-1 text-2xl font-semibold text-warning-600">{data.churnProbability || 0}%</p>
                 <p className="mt-1 text-xs text-gray-500">High-risk clients</p>
               </div>
+            </div>
+          </div>
+
+          {/* Quick Insights Questions */}
+          <div className="card">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Questions</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                "What are my top performing agents this month?",
+                "Which clients are at risk of churning?",
+                "What's my collection rate trend?",
+                "Show me overdue payments by agent",
+                "Which payment methods are most profitable?",
+                "What policies are expiring soon?"
+              ].map((question, index) => (
+                <button
+                  key={index}
+                  onClick={() => openChatWithQuestion(question)}
+                  className="text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <span className="text-sm text-gray-700">{question}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -556,24 +618,36 @@ export default function InsightsPage() {
                 </ul>
               </div>
             ) : (
-              aiMessages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`${
-                    message.role === 'user' ? 'text-right' : 'text-left'
-                  }`}
-                >
+              <>
+                {aiMessages.length > 0 && (
+                  <div className="text-center mb-2">
+                    <button
+                      onClick={() => setAiMessages([])}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Clear chat history
+                    </button>
+                  </div>
+                )}
+                {aiMessages.map((message, index) => (
                   <div
-                    className={`inline-block p-3 rounded-lg max-w-[80%] ${
-                      message.role === 'user'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-900'
+                    key={index}
+                    className={`${
+                      message.role === 'user' ? 'text-right' : 'text-left'
                     }`}
                   >
-                    {message.content}
+                    <div
+                      className={`inline-block p-3 rounded-lg max-w-[80%] ${
+                        message.role === 'user'
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-gray-100 text-gray-900'
+                      }`}
+                    >
+                      <div className="whitespace-pre-wrap">{message.content}</div>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
             {isAiLoading && (
               <div className="text-left">
