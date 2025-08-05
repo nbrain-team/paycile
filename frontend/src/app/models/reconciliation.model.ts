@@ -1,0 +1,72 @@
+export interface Reconciliation {
+  id: string;
+  paymentId: string;
+  payment?: {
+    paymentReference: string;
+    amount: number;
+    paymentDate: string;
+    client?: {
+      firstName: string;
+      lastName: string;
+      companyName?: string;
+    };
+  };
+  invoiceId?: string;
+  invoice?: {
+    invoiceNumber: string;
+    amount: number;
+    dueDate: string;
+    status: string;
+  };
+  status: 'matched' | 'unmatched' | 'disputed';
+  matchedAmount: number;
+  confidence?: number;
+  suggestedInvoiceId?: string;
+  suggestedInvoice?: {
+    invoiceNumber: string;
+    amount: number;
+    confidence: number;
+  };
+  notes?: string;
+  aiSuggestions?: AISuggestion[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AISuggestion {
+  invoiceId: string;
+  invoiceNumber: string;
+  amount: number;
+  confidence: number;
+  reasons: string[];
+}
+
+export interface ReconciliationFilters {
+  status?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ReconciliationResponse {
+  data: Reconciliation[];
+  meta: {
+    total: number;
+    page: number;
+    totalPages: number;
+  };
+}
+
+export interface ReconciliationStats {
+  total: number;
+  matched: number;
+  unmatched: number;
+  disputed: number;
+  matchRate: number;
+  totalAmount: number;
+  reconciledAmount: number;
+} 
