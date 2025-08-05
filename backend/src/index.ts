@@ -24,16 +24,23 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'https://paycile-frontend.onrender.com'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+// Health check endpoint (for Render)
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Paycile API is running',
+    version: '1.0.0'
+  });
 });
 
-// Routes
+// API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
 app.use('/api/policies', policyRouter);
