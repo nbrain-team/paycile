@@ -15,13 +15,13 @@ if (fs.existsSync(distPath)) {
   console.log('Files found:', files.slice(0, 5)); // Log first 5 files
 }
 
-// Serve static files from the Angular app
-app.use(express.static(distPath));
-
-// Health check endpoint
+// Health check endpoint - MUST come before static files
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', path: distPath, exists: fs.existsSync(distPath) });
 });
+
+// Serve static files from the Angular app
+app.use(express.static(distPath));
 
 // Catch all other routes and return the index file
 app.get('*', (req, res) => {
