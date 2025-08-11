@@ -152,23 +152,25 @@ interface DashboardStats {
         <!-- Revenue Trend Chart -->
         <div class="bg-white shadow rounded-lg p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Revenue Trend</h3>
-          <canvas baseChart
-            [data]="revenueChartData"
-            [options]="revenueChartOptions"
-            [type]="'line'"
-            height="120">
-          </canvas>
+          <div style="position: relative; height:300px; width:100%">
+            <canvas baseChart
+              [data]="revenueChartData"
+              [options]="revenueChartOptions"
+              [type]="'line'">
+            </canvas>
+          </div>
         </div>
 
         <!-- Policy Distribution Chart -->
         <div class="bg-white shadow rounded-lg p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Policy Distribution</h3>
-          <canvas baseChart
-            [data]="policyChartData"
-            [options]="policyChartOptions"
-            [type]="'doughnut'"
-            height="120">
-          </canvas>
+          <div style="position: relative; height:300px; width:100%">
+            <canvas baseChart
+              [data]="policyChartData"
+              [options]="policyChartOptions"
+              [type]="'doughnut'">
+            </canvas>
+          </div>
         </div>
       </div>
 
@@ -177,12 +179,13 @@ interface DashboardStats {
         <!-- Payment Status Chart -->
         <div class="bg-white shadow rounded-lg p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Payment Status</h3>
-          <canvas baseChart
-            [data]="paymentStatusChartData"
-            [options]="paymentStatusChartOptions"
-            [type]="'pie'"
-            height="100">
-          </canvas>
+          <div style="position: relative; height:200px; width:100%">
+            <canvas baseChart
+              [data]="paymentStatusChartData"
+              [options]="paymentStatusChartOptions"
+              [type]="'pie'">
+            </canvas>
+          </div>
           <div class="mt-4 space-y-2">
             <div class="flex justify-between text-sm">
               <span class="text-gray-600">Completed</span>
@@ -202,12 +205,13 @@ interface DashboardStats {
         <!-- Top Agents Performance -->
         <div class="bg-white shadow rounded-lg p-6">
           <h3 class="text-lg font-medium text-gray-900 mb-4">Top Performing Agents</h3>
-          <canvas baseChart
-            [data]="agentPerformanceChartData"
-            [options]="agentPerformanceChartOptions"
-            [type]="'bar'"
-            height="100">
-          </canvas>
+          <div style="position: relative; height:200px; width:100%">
+            <canvas baseChart
+              [data]="agentPerformanceChartData"
+              [options]="agentPerformanceChartOptions"
+              [type]="'bar'">
+            </canvas>
+          </div>
         </div>
 
         <!-- Recent Activities -->
