@@ -13,7 +13,7 @@ import { ToastrService } from 'ngx-toastr';
 @Component({
   selector: 'app-payments',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoadingSpinnerComponent, DataTableComponent, ModalComponent],
+  imports: [CommonModule, FormsModule, DataTableComponent, ModalComponent],
   template: `
     <div class="space-y-6">
       <div class="sm:flex sm:items-center sm:justify-between">

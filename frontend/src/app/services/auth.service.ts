@@ -9,6 +9,8 @@ interface User {
   id: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: 'broker' | 'agent' | 'client' | 'admin';
   agentId?: string;
   brokerId?: string;

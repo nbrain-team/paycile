@@ -13,11 +13,15 @@ Chart.register(...registerables);
 interface DashboardStats {
   totalPolicies: number;
   totalPremiums: number;
+  totalRevenue?: number;
   pendingInvoices: number;
   overduePayments: number;
+  overdueInvoices?: number;
+  outstandingPayments?: number;
+  reconciliationRate?: number;
   totalClients: number;
   totalAgents: number;
-  recentPayments: number;
+  recentPayments: Array<any>;
   monthlyRevenue: Array<{ month: string; revenue: number }>;
   policyDistribution: Array<{ type: string; count: number }>;
   paymentStatus: { completed: number; pending: number; failed: number };
@@ -327,7 +331,7 @@ interface DashboardStats {
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-600">Recent Payments</p>
-              <p class="mt-1 text-2xl font-semibold text-gray-900">{{ stats()?.recentPayments || 0 }}</p>
+              <p class="mt-1 text-2xl font-semibold text-gray-900">{{ stats()?.recentPayments?.length || 0 }}</p>
             </div>
             <div class="p-3 bg-purple-100 rounded-full">
               <svg class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -521,11 +525,21 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     const mockStats: DashboardStats = {
       totalPolicies: 245,
       totalPremiums: 1256890,
+      totalRevenue: 1256890,
       pendingInvoices: 42,
       overduePayments: 8,
+      overdueInvoices: 8,
+      outstandingPayments: 125000,
+      reconciliationRate: 94,
       totalClients: 189,
       totalAgents: 24,
-      recentPayments: 67,
+      recentPayments: [
+        { id: 1, client: { firstName: 'John', lastName: 'Doe' }, amount: 2500, status: 'completed' },
+        { id: 2, client: { firstName: 'Jane', lastName: 'Smith' }, amount: 1800, status: 'completed' },
+        { id: 3, client: { firstName: 'Bob', lastName: 'Johnson' }, amount: 3200, status: 'pending' },
+        { id: 4, client: { firstName: 'Alice', lastName: 'Brown' }, amount: 2100, status: 'completed' },
+        { id: 5, client: { firstName: 'Tom', lastName: 'Wilson' }, amount: 2900, status: 'completed' }
+      ],
       monthlyRevenue: [
         { month: 'Jan', revenue: 95000 },
         { month: 'Feb', revenue: 105000 },
