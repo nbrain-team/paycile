@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CashFlowService } from '../../services/cash-flow.service';
@@ -14,6 +14,7 @@ import {
 import { ModalComponent } from '../../components/modal/modal.component';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, Chart, registerables } from 'chart.js';
+import { firstValueFrom } from 'rxjs';
 
 Chart.register(...registerables);
 
@@ -588,7 +589,7 @@ Chart.register(...registerables);
     }
   `]
 })
-export class CashFlowCalendarComponent implements OnInit {
+export class CashFlowCalendarComponent implements OnInit, AfterViewInit {
   // Form Groups
   transactionForm: FormGroup;
   budgetForm: FormGroup;
@@ -788,6 +789,13 @@ export class CashFlowCalendarComponent implements OnInit {
     this.updateCurrentBalance();
   }
 
+  ngAfterViewInit() {
+    // Force chart updates after the view is ready
+    setTimeout(() => {
+      this.loadProjections();
+    }, 100);
+  }
+
   // Data Loading
   loadMonthlySummary() {
     this.cashFlowService.getMonthlySummary(this.currentYear(), this.currentMonth())
@@ -820,12 +828,23 @@ export class CashFlowCalendarComponent implements OnInit {
   updateProjectionChart(projections: CashFlowProjection[]) {
     const currentBal = this.currentBalance();
     
-    this.projectionChartData.labels = projections.map(p => 
-      new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    );
-    
-    this.projectionChartData.datasets[0].data = projections.map(p => p.projectedBalance);
-    this.projectionChartData.datasets[1].data = projections.map(() => currentBal);
+    // Create new object to trigger change detection
+    this.projectionChartData = {
+      ...this.projectionChartData,
+      labels: projections.map(p => 
+        new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      ),
+      datasets: [
+        {
+          ...this.projectionChartData.datasets[0],
+          data: projections.map(p => p.projectedBalance)
+        },
+        {
+          ...this.projectionChartData.datasets[1],
+          data: projections.map(() => currentBal)
+        }
+      ]
+    };
   }
 
   // Calendar Navigation

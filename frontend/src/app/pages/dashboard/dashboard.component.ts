@@ -587,24 +587,48 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     const stats = this.stats();
     if (!stats) return;
 
-    // Update revenue chart
-    this.revenueChartData.labels = stats.monthlyRevenue.map(m => m.month);
-    this.revenueChartData.datasets[0].data = stats.monthlyRevenue.map(m => m.revenue);
+    // Update revenue chart with new object reference
+    this.revenueChartData = {
+      ...this.revenueChartData,
+      labels: stats.monthlyRevenue.map(m => m.month),
+      datasets: [{
+        ...this.revenueChartData.datasets[0],
+        data: stats.monthlyRevenue.map(m => m.revenue)
+      }]
+    };
 
     // Update policy distribution chart
-    this.policyChartData.labels = stats.policyDistribution.map(p => p.type);
-    this.policyChartData.datasets[0].data = stats.policyDistribution.map(p => p.count);
+    this.policyChartData = {
+      ...this.policyChartData,
+      labels: stats.policyDistribution.map(p => p.type),
+      datasets: [{
+        ...this.policyChartData.datasets[0],
+        data: stats.policyDistribution.map(p => p.count)
+      }]
+    };
 
     // Update payment status chart
-    this.paymentStatusChartData.datasets[0].data = [
-      stats.paymentStatus.completed,
-      stats.paymentStatus.pending,
-      stats.paymentStatus.failed
-    ];
+    this.paymentStatusChartData = {
+      ...this.paymentStatusChartData,
+      datasets: [{
+        ...this.paymentStatusChartData.datasets[0],
+        data: [
+          stats.paymentStatus.completed,
+          stats.paymentStatus.pending,
+          stats.paymentStatus.failed
+        ]
+      }]
+    };
 
     // Update agent performance chart
-    this.agentPerformanceChartData.labels = stats.topAgents.map(a => a.name);
-    this.agentPerformanceChartData.datasets[0].data = stats.topAgents.map(a => a.sales);
+    this.agentPerformanceChartData = {
+      ...this.agentPerformanceChartData,
+      labels: stats.topAgents.map(a => a.name),
+      datasets: [{
+        ...this.agentPerformanceChartData.datasets[0],
+        data: stats.topAgents.map(a => a.sales)
+      }]
+    };
   }
 
   refreshData() {
