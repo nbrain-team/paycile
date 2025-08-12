@@ -12,84 +12,216 @@ import { DataTableComponent, TableConfig } from '../../components/data-table/dat
   standalone: true,
   imports: [CommonModule, FormsModule, DataTableComponent],
   template: `
-    <div class="space-y-6">
-      <div class="sm:flex sm:items-center sm:justify-between">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 animate-in">
+      <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-900">Policies</h1>
-        <button 
-          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
-          (click)="openNewPolicyModal()"
-          *ngIf="user()?.role !== 'client'"
-        >
-          <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          New Policy
-        </button>
+        <div class="flex gap-2">
+          <button
+            *ngIf="user()?.role !== 'client'"
+            (click)="openAddModal()"
+            class="btn-primary btn-md"
+          >
+            <svg class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Policy
+          </button>
+        </div>
       </div>
 
       <!-- Filters -->
-      <div class="flex flex-col sm:flex-row gap-4">
-        <input
-          type="text"
-          placeholder="Search policies..."
-          class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          [(ngModel)]="searchTerm"
-          (ngModelChange)="onSearchChange()"
-        />
-        <select
-          class="w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-          [(ngModel)]="statusFilter"
-          (ngModelChange)="onFilterChange()"
-        >
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="expired">Expired</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+      <div class="card">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="label">Search</label>
+            <input
+              type="text"
+              [(ngModel)]="filters.search"
+              (ngModelChange)="onFilterChange()"
+              placeholder="Search policies..."
+              class="input"
+            >
+          </div>
+          <div>
+            <label class="label">Status</label>
+            <select [(ngModel)]="filters.status" (ngModelChange)="onFilterChange()" class="input">
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="expired">Expired</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Insurance Company</label>
+            <select [(ngModel)]="filters.insuranceCompanyId" (ngModelChange)="onFilterChange()" class="input">
+              <option value="">All Companies</option>
+              <option *ngFor="let company of insuranceCompanies" [value]="company.id">
+                {{ company.name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Policy Type</label>
+            <select [(ngModel)]="filters.policyType" (ngModelChange)="onFilterChange()" class="input">
+              <option value="">All Types</option>
+              <option value="auto">Auto</option>
+              <option value="home">Home</option>
+              <option value="life">Life</option>
+              <option value="health">Health</option>
+              <option value="business">Business</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <!-- Data Table -->
-      <app-data-table 
-        [config]="tableConfig()"
-        [cellFormatter]="formatCell"
-        [cellClassProvider]="getCellClass"
-        (onSortChange)="handleSort($event)"
-        (onPageChange)="handlePageChange($event)"
-        (onRowClick)="viewPolicy($event.id)">
-      </app-data-table>
-
-      <!-- Custom Templates -->
-      <ng-template #statusTemplate let-row="row" let-value="value">
-        <span [ngClass]="getStatusClass(value)">
-          {{ value }}
-        </span>
-      </ng-template>
-
-      <ng-template #clientTemplate let-row="row">
-        {{ getClientName(row) }}
-      </ng-template>
-
-      <ng-template #premiumTemplate let-row="row">
-        {{ formatCurrency(getPremiumAmount(row)) }}/{{ getFrequencyLabel(row.paymentFrequency) }}
-      </ng-template>
-
-      <ng-template #actionsTemplate let-row="row">
-        <button 
-          class="text-primary-600 hover:text-primary-900 mr-3"
-          (click)="viewPolicy(row.id); $event.stopPropagation()"
+      <!-- Policies Table -->
+      <div class="card">
+        <app-data-table
+          [data]="policies()"
+          [columns]="columns"
+          [loading]="loading()"
+          [totalItems]="totalItems()"
+          [itemsPerPage]="filters.limit"
+          [currentPage]="currentPage()"
+          [sortField]="filters.sortBy"
+          [sortDirection]="filters.sortOrder"
+          (onSort)="handleSort($event)"
+          (onPageChange)="handlePageChange($event)"
         >
-          View
-        </button>
-        <button 
-          class="text-primary-600 hover:text-primary-900"
-          (click)="editPolicy(row.id); $event.stopPropagation()"
-          *ngIf="user()?.role !== 'client'"
-        >
-          Edit
-        </button>
-      </ng-template>
+          <ng-template #cellTemplate let-item="item" let-column="column">
+            <span [ngClass]="getCellClass(item, column)" [innerHTML]="formatCell(item, column)"></span>
+          </ng-template>
+        </app-data-table>
+      </div>
     </div>
+
+    <!-- Add/Edit Policy Modal -->
+    <app-modal
+      [isOpen]="showAddModal()"
+      [title]="editingPolicy() ? 'Edit Policy' : 'Add New Policy'"
+      [size]="'lg'"
+      (onClose)="closeModals()"
+    >
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="label">Policy Number</label>
+            <input
+              type="text"
+              [(ngModel)]="formData.policyNumber"
+              placeholder="POL-XXXXXX"
+              class="input"
+              [disabled]="!!editingPolicy()"
+            >
+          </div>
+          <div>
+            <label class="label">Status</label>
+            <select [(ngModel)]="formData.status" class="input">
+              <option value="active">Active</option>
+              <option value="expired">Expired</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="label">Client</label>
+            <select [(ngModel)]="formData.clientId" class="input" required>
+              <option value="">Select Client</option>
+              <option *ngFor="let client of clients" [value]="client.id">
+                {{ client.firstName }} {{ client.lastName }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Insurance Company</label>
+            <select [(ngModel)]="formData.insuranceCompanyId" class="input" required>
+              <option value="">Select Company</option>
+              <option *ngFor="let company of insuranceCompanies" [value]="company.id">
+                {{ company.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="label">Policy Type</label>
+            <select [(ngModel)]="formData.policyType" class="input" required>
+              <option value="">Select Type</option>
+              <option value="auto">Auto</option>
+              <option value="home">Home</option>
+              <option value="life">Life</option>
+              <option value="health">Health</option>
+              <option value="business">Business</option>
+            </select>
+          </div>
+          <div>
+            <label class="label">Premium Amount</label>
+            <input
+              type="number"
+              [(ngModel)]="formData.premiumAmount"
+              placeholder="0.00"
+              step="0.01"
+              class="input"
+              required
+            >
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="label">Effective Date</label>
+            <input
+              type="date"
+              [(ngModel)]="formData.effectiveDate"
+              class="input"
+              required
+            >
+          </div>
+          <div>
+            <label class="label">Expiry Date</label>
+            <input
+              type="date"
+              [(ngModel)]="formData.expiryDate"
+              class="input"
+              required
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="label">Coverage Details</label>
+          <textarea
+            [(ngModel)]="formData.coverageDetails"
+            rows="3"
+            placeholder="Enter coverage details..."
+            class="input"
+          ></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-4">
+          <button
+            type="button"
+            (click)="closeModals()"
+            class="btn-outline btn-md"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            (click)="savePolicy()"
+            [disabled]="loading()"
+            class="btn-primary btn-md"
+          >
+            {{ editingPolicy() ? 'Update' : 'Create' }} Policy
+          </button>
+        </div>
+      </div>
+    </app-modal>
   `,
   styles: []
 })

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, of } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { map } from 'rxjs/operators';
 
 interface User {
   id: string;
@@ -16,6 +17,13 @@ interface User {
 interface LoginResponse {
   token: string;
   user: User;
+}
+
+interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+  role: 'broker' | 'agent' | 'client';
 }
 
 @Injectable({
@@ -39,24 +47,39 @@ export class AuthService {
     this.checkAuth();
   }
 
-  login(email: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, { email, password })
+  login(email: string, password: string): Observable<User> {
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, password })
       .pipe(
         tap(response => {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
-          this.userSignal.set(response.user);
-          this.isAuthenticatedSignal.set(true);
-        })
+          this.handleAuthSuccess(response);
+        }),
+        map(response => response.user)
       );
   }
 
+  register(data: RegisterRequest): Observable<User> {
+    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/register`, data).pipe(
+      tap(response => {
+        this.handleAuthSuccess(response);
+      }),
+      map(response => response.user)
+    );
+  }
+
+  loginAsDemo(role: 'agent' | 'client'): Observable<User> {
+    const credentials = role === 'agent' 
+      ? { email: 'agent@demo.com', password: 'demo123' }
+      : { email: 'client@demo.com', password: 'demo123' };
+    
+    return this.login(credentials.email, credentials.password);
+  }
+
   logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     this.userSignal.set(null);
     this.isAuthenticatedSignal.set(false);
-    this.router.navigate(['/login']);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
   }
 
   checkAuth(): void {
@@ -76,15 +99,10 @@ export class AuthService {
     }
   }
 
-  register(data: any): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/register`, data)
-      .pipe(
-        tap(response => {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
-          this.userSignal.set(response.user);
-          this.isAuthenticatedSignal.set(true);
-        })
-      );
+  private handleAuthSuccess(response: LoginResponse): void {
+    localStorage.setItem('token', response.token);
+    localStorage.setItem('user', JSON.stringify(response.user));
+    this.userSignal.set(response.user);
+    this.isAuthenticatedSignal.set(true);
   }
 } 
