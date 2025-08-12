@@ -395,9 +395,9 @@ Chart.register(...registerables);
 
     <!-- Transaction Modal -->
     <app-modal
-      *ngIf="showTransactionModal"
+      [isOpen]="showTransactionModal"
       [title]="editingTransaction ? 'Edit Transaction' : 'Add Transaction'"
-      (close)="closeTransactionModal()"
+      (onClose)="closeTransactionModal()"
     >
       <form [formGroup]="transactionForm" (ngSubmit)="saveTransaction()" class="space-y-4">
         <div>
@@ -514,9 +514,9 @@ Chart.register(...registerables);
 
     <!-- Budget Modal -->
     <app-modal
-      *ngIf="showBudgetModal"
+      [isOpen]="showBudgetModal"
       title="Manage Budgets"
-      (close)="closeBudgetModal()"
+      (onClose)="closeBudgetModal()"
       size="lg"
     >
       <div class="space-y-6">
