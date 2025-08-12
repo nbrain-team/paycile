@@ -611,6 +611,7 @@ export class CashFlowCalendarComponent implements OnInit {
   currentBalance = signal(0);
   monthlySummary = signal<CashFlowSummary | null>(null);
   projections = signal<CashFlowProjection[]>([]);
+  selectedDayFlow = signal<DailyCashFlow | null>(null);
 
   // Chart Data
   projectionChartData: ChartData<'line'> = {
@@ -708,15 +709,6 @@ export class CashFlowCalendarComponent implements OnInit {
     });
     
     return days;
-  });
-
-  selectedDayFlow = computed(() => {
-    const date = this.selectedDate();
-    if (!date) return null;
-    
-    let flow: DailyCashFlow | null = null;
-    this.cashFlowService.getDailyCashFlow(date).subscribe(f => flow = f);
-    return flow;
   });
 
   categoryBreakdown = computed(() => {
@@ -857,6 +849,10 @@ export class CashFlowCalendarComponent implements OnInit {
 
   selectDate(date: Date) {
     this.selectedDate.set(date);
+    // Load the daily cash flow for selected date
+    this.cashFlowService.getDailyCashFlow(date).subscribe(flow => {
+      this.selectedDayFlow.set(flow);
+    });
   }
 
   getMonthYear(): string {
