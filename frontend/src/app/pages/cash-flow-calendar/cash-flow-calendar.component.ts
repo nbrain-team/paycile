@@ -13,7 +13,9 @@ import {
 } from '../../models/cash-flow.model';
 import { ModalComponent } from '../../components/modal/modal.component';
 import { BaseChartDirective } from 'ng2-charts';
-import { ChartConfiguration, ChartData } from 'chart.js';
+import { ChartConfiguration, ChartData, Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables);
 
 @Component({
   selector: 'app-cash-flow-calendar',
@@ -31,7 +33,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
         </div>
         <div class="mt-4 sm:mt-0 flex space-x-3">
           <button 
-            class="btn-secondary"
+            class="btn-secondary btn-md"
             (click)="showProjections = !showProjections"
           >
             <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,7 +42,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
             {{ showProjections ? 'Hide' : 'Show' }} Projections
           </button>
           <button 
-            class="btn-primary"
+            class="btn-primary btn-md"
             (click)="openTransactionModal()"
           >
             <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,7 +327,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-medium text-gray-900">Budget Status</h3>
                 <button 
-                  class="text-sm text-blue-600 hover:text-blue-700"
+                  class="btn-secondary btn-sm"
                   (click)="openBudgetModal()"
                 >
                   Manage
@@ -493,14 +495,14 @@ import { ChartConfiguration, ChartData } from 'chart.js';
         <div class="flex justify-end space-x-3 pt-4">
           <button
             type="button"
-            class="btn-secondary"
+            class="btn-secondary btn-md"
             (click)="closeTransactionModal()"
           >
             Cancel
           </button>
           <button
             type="submit"
-            class="btn-primary"
+            class="btn-primary btn-md"
             [disabled]="!transactionForm.valid"
           >
             {{ editingTransaction ? 'Update' : 'Add' }} Transaction
@@ -548,7 +550,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
             </div>
           </div>
           <div class="mt-4 flex justify-end">
-            <button type="submit" class="btn-primary" [disabled]="!budgetForm.valid">
+            <button type="submit" class="btn-primary btn-md" [disabled]="!budgetForm.valid">
               Add Budget
             </button>
           </div>
