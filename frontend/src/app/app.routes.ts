@@ -24,7 +24,7 @@ export const routes: Routes = [
       { path: 'agents', loadComponent: () => import('./pages/agents/agents.component').then(m => m.AgentsComponent) },
       { path: 'insurance-companies', loadComponent: () => import('./pages/insurance-companies/insurance-companies.component').then(m => m.InsuranceCompaniesComponent) },
       { path: 'insights', loadComponent: () => import('./pages/insights/insights.component').then(m => m.InsightsComponent) },
-      { path: 'cash-flow', loadComponent: () => import('./pages/cash-flow/cash-flow.component').then(m => m.CashFlowComponent) },
+      { path: 'cash-flow', loadComponent: () => import('./pages/cash-flow-calendar/cash-flow-calendar.component').then(m => m.CashFlowCalendarComponent) },
       { path: 'settings', loadComponent: () => import('./pages/settings/settings.component').then(m => m.SettingsComponent) },
       { path: 'chat', loadComponent: () => import('./pages/chat/chat.component').then(m => m.ChatComponent) }
     ]
