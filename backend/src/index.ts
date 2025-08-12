@@ -14,6 +14,7 @@ import { insuranceCompanyRouter } from './routes/insurance-company.routes';
 import { insightsRouter } from './routes/insights.routes';
 import { aiRouter } from './routes/ai.routes';
 import { verifyRouter } from './routes/verify.routes';
+import { cashFlowRouter } from './routes/cash-flow.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { logger } from './utils/logger';
 
@@ -53,6 +54,7 @@ app.use('/api/insurance-companies', insuranceCompanyRouter);
 app.use('/api/insights', insightsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/verify', verifyRouter);
+app.use('/api/cash-flow', cashFlowRouter);
 
 // Error handling
 app.use(errorHandler);
