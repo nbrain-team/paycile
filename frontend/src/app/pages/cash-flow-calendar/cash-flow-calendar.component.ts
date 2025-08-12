@@ -211,16 +211,16 @@ import { ChartConfiguration, ChartData } from 'chart.js';
                 {{ selectedDate() | date:'EEEE, MMMM d, yyyy' }}
               </h3>
               
-              <div *ngIf="selectedDayFlow() as dayFlow" class="space-y-4">
+              <div *ngIf="selectedDayFlow()" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                   <div>
                     <p class="text-sm text-gray-600">Starting Balance</p>
-                    <p class="font-semibold">{{ formatCurrency(dayFlow.startingBalance) }}</p>
+                    <p class="font-semibold">{{ formatCurrency(selectedDayFlow()!.startingBalance) }}</p>
                   </div>
                   <div>
                     <p class="text-sm text-gray-600">Ending Balance</p>
-                    <p class="font-semibold" [ngClass]="dayFlow.endingBalance >= 0 ? 'text-gray-900' : 'text-red-600'">
-                      {{ formatCurrency(dayFlow.endingBalance) }}
+                    <p class="font-semibold" [ngClass]="selectedDayFlow()!.endingBalance >= 0 ? 'text-gray-900' : 'text-red-600'">
+                      {{ formatCurrency(selectedDayFlow()!.endingBalance) }}
                     </p>
                   </div>
                 </div>
@@ -230,7 +230,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
                   <h4 class="text-sm font-medium text-gray-900 mb-2">Transactions</h4>
                   <div class="space-y-2">
                     <div 
-                      *ngFor="let transaction of dayFlow.transactions"
+                      *ngFor="let transaction of selectedDayFlow()!.transactions"
                       class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
                     >
                       <div class="flex items-center space-x-3">
@@ -260,7 +260,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
                         </div>
                       </div>
                     </div>
-                    <div *ngIf="dayFlow.transactions.length === 0" class="text-center py-4 text-gray-500">
+                    <div *ngIf="selectedDayFlow()!.transactions.length === 0" class="text-center py-4 text-gray-500">
                       No transactions for this day
                     </div>
                   </div>
