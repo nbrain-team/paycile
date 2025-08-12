@@ -13,7 +13,7 @@ import { ToastrService } from 'ngx-toastr';
     <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div class="sm:mx-auto sm:w-full sm:max-w-md">
         <img 
-          src="/paycile-logo.png" 
+          src="assets/paycile-logo.png" 
           alt="Paycile" 
           class="mx-auto h-16 w-auto"
         >

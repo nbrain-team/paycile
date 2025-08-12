@@ -19,8 +19,12 @@ interface NavItem {
       <div class="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-soft">
         <div class="flex h-full flex-col">
           <!-- Logo -->
-          <div class="flex h-16 items-center justify-center border-b border-gray-200">
-            <h1 class="text-xl font-bold text-primary-600">Paycile</h1>
+          <div class="flex h-16 items-center justify-center border-b border-gray-200 px-4">
+            <img 
+              src="assets/paycile-logo.png" 
+              alt="Paycile" 
+              class="h-10 w-auto"
+            >
           </div>
 
           <!-- Navigation -->

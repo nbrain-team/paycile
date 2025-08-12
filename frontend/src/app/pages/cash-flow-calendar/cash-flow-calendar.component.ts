@@ -884,6 +884,7 @@ export class CashFlowCalendarComponent implements OnInit, AfterViewInit {
 
   // Transaction Management
   openTransactionModal(transaction?: CashFlowTransaction) {
+    console.log('openTransactionModal called', transaction);
     if (transaction) {
       this.editingTransaction = transaction;
       this.transactionForm.patchValue({
@@ -907,6 +908,7 @@ export class CashFlowCalendarComponent implements OnInit, AfterViewInit {
       });
     }
     this.showTransactionModal = true;
+    console.log('showTransactionModal set to:', this.showTransactionModal);
   }
 
   closeTransactionModal() {
@@ -961,6 +963,7 @@ export class CashFlowCalendarComponent implements OnInit, AfterViewInit {
 
   // Budget Management
   openBudgetModal() {
+    console.log('openBudgetModal called');
     this.showBudgetModal = true;
   }
 
