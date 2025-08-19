@@ -24,7 +24,7 @@ import { FeesService, CalcResponse, ExtractResponse } from '../../services/fees.
         <div class="lg:col-span-2">
           <!-- Upload mode -->
           <div *ngIf="mode() === 'upload'" class="space-y-4">
-            <div class="p-4 border rounded-lg bg-white/50 dark:bg-neutral-900/50">
+            <div class="card">
               <input type="file" accept="application/pdf" (change)="onFileSelected($event)" class="block w-full text-sm" />
               <div class="text-xs text-muted-foreground mt-2">We only need totals (volume, fees, transactions). PDF recommended for best accuracy.</div>
             </div>
@@ -54,7 +54,7 @@ import { FeesService, CalcResponse, ExtractResponse } from '../../services/fees.
         </div>
 
         <div class="lg:col-span-1">
-          <div class="p-4 border rounded-lg bg-white/50 dark:bg-neutral-900/50">
+          <div class="card">
             <h3 class="font-medium mb-3">Your estimate</h3>
             <div class="space-y-2">
               <div class="flex items-center justify-between">
@@ -87,7 +87,7 @@ import { FeesService, CalcResponse, ExtractResponse } from '../../services/fees.
             </div>
           </div>
 
-          <div class="mt-4 p-4 border rounded-lg bg-white/50 dark:bg-neutral-900/50">
+          <div class="mt-4 card">
             <h3 class="font-medium mb-3">Eliminate ~90% of fees</h3>
             <p class="text-sm text-muted-foreground mb-3">Interested in eliminating ~90% of merchant fees? See how our cost-recovery program works.</p>
             <div class="flex gap-2">
