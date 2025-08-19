@@ -56,3 +56,6 @@ pids/
 *.pid
 *.seed
 *.pid.lock 
+# Local env and platform details
+*.env
+platform-details.txt

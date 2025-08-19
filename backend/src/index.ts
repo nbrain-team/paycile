@@ -15,6 +15,7 @@ import { insightsRouter } from './routes/insights.routes';
 import { aiRouter } from './routes/ai.routes';
 import { verifyRouter } from './routes/verify.routes';
 import { cashFlowRouter } from './routes/cash-flow.routes';
+import { feesRouter } from './routes/fees.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { logger } from './utils/logger';
 
@@ -55,6 +56,7 @@ app.use('/api/insights', insightsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/verify', verifyRouter);
 app.use('/api/cash-flow', cashFlowRouter);
+app.use('/api/fees', feesRouter);
 
 // Error handling
 app.use(errorHandler);
