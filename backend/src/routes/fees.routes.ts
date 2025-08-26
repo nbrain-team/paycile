@@ -272,9 +272,103 @@ function extractTotalsFromText(rawText: string): ExtractResponse {
     return candidates[0];
   }
 
-  const volumeCand = findBestCandidate(volumeKeywords, 'money', scoreLineForVolume, true);
-  const feesCand = findBestCandidate(feesKeywords, 'money', scoreLineForFees, false);
-  const txnCand = findBestCandidate(txnKeywords, 'int', scoreLineForTxn, true);
+  // Helper: extract first money value from a specific line
+  function firstMoneyFromLine(line: { page: number; text: string }): Candidate | null {
+    const vals = extractMoney(line.text);
+    if (vals.length === 0) return null;
+    return { value: Math.abs(vals[0]), score: 10, source: line };
+  }
+
+  // 0) Targeted direct matches with strong precedence
+  const directVolumeLine = linesWithPages.find(lp => /\bamounts? submitted\b/i.test(lp.text));
+  const directFeesLine = linesWithPages.find(lp => /\bfees charged\b/i.test(lp.text));
+
+  const volumeDirect = directVolumeLine ? firstMoneyFromLine(directVolumeLine) : null;
+  const feesDirect = directFeesLine ? firstMoneyFromLine(directFeesLine) : null;
+
+  // 1) Generic candidates (only if not directly found)
+  const volumeCand = volumeDirect ?? findBestCandidate(volumeKeywords, 'money', scoreLineForVolume, true);
+  const feesCand = feesDirect ?? findBestCandidate(feesKeywords, 'money', scoreLineForFees, false);
+
+  // For transactions, avoid treating currency as counts
+  function extractNonMoneyInts(line: string): number[] {
+    const moneySpans: Array<{ start: number; end: number }> = [];
+    let m: RegExpExecArray | null;
+    moneyRegex.lastIndex = 0;
+    while ((m = moneyRegex.exec(line)) !== null) {
+      moneySpans.push({ start: m.index, end: m.index + m[0].length });
+    }
+    const results: number[] = [];
+    const re = /\b\d{1,9}\b/g; // integer blocks in original string
+    let x: RegExpExecArray | null;
+    while ((x = re.exec(line)) !== null) {
+      const start = x.index;
+      const end = start + x[0].length;
+      // Skip if inside a money span
+      const overlapsMoney = moneySpans.some(s => !(end <= s.start || start >= s.end));
+      if (overlapsMoney) continue;
+      // Skip if adjacent to a decimal point (part of 4.75)
+      const before = start > 0 ? line[start - 1] : '';
+      const after = end < line.length ? line[end] : '';
+      if (before === '.' || after === '.') continue;
+      const v = parseInt(x[0].replace(/[,]/g, ''), 10);
+      if (!Number.isNaN(v)) results.push(v);
+    }
+    return results;
+  }
+  function findTxnCandidate(): Candidate | null {
+    const candidates: Candidate[] = [];
+    for (let i = 0; i < linesWithPages.length; i += 1) {
+      const lp = linesWithPages[i];
+      const lower = lp.text.toLowerCase();
+      if (!txnKeywords.some(k => lower.includes(k))) continue;
+      const hood = getNeighborhood(i, 2);
+      hood.forEach(nl => {
+        extractNonMoneyInts(nl.text).forEach(v => {
+          const score = scoreLineForTxn(nl.text) + (/(^|\s)total(\s|$)/i.test(nl.text) ? 1 : 0);
+          candidates.push({ value: v, score, source: nl });
+        });
+      });
+    }
+    if (candidates.length === 0) return null;
+    candidates.sort((a, b) => (b.score - a.score) || (b.value - a.value));
+    return candidates[0];
+  }
+  // Transactions: target known patterns FIRST
+  let txnFinal: Candidate | null = null;
+
+  // A) SUMMARY BY CARD TYPE → "Total1,083$..."
+  {
+    const summaryByCardIdx = linesWithPages.findIndex(lp => lp.text.toLowerCase().includes('summary by card type'));
+    if (summaryByCardIdx !== -1) {
+      for (let i = summaryByCardIdx; i < Math.min(summaryByCardIdx + 80, linesWithPages.length); i += 1) {
+        const compact = linesWithPages[i].text.replace(/\s+/g, '');
+        const m = /^Total([0-9]{1,3}(?:,[0-9]{3})*)(?:\$|$)/.exec(compact);
+        if (m) {
+          const count = parseInt(m[1].replace(/[,]/g, ''), 10);
+          if (!Number.isNaN(count)) {
+            txnFinal = { value: count, score: 10, source: linesWithPages[i] };
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // B) End summary line → "TOTAL $563,237.04 1,083 ..."
+  if (!txnFinal) {
+    const endTotalMatch = /\bTOTAL\s*\$\s*[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?\s*([0-9]{1,3}(?:,[0-9]{3})*)/i.exec(normalized.replace(/\s+/g, ' '));
+    if (endTotalMatch) {
+      const count = parseInt(endTotalMatch[1].replace(/[,]/g, ''), 10);
+      if (!Number.isNaN(count)) {
+        const src = linesWithPages.find(lp => /TOTAL/i.test(lp.text)) ?? linesWithPages[0];
+        txnFinal = { value: count, score: 8, source: src };
+      }
+    }
+  }
+
+  // C) Generic as last resort
+  let txnCand = txnFinal ? null : findTxnCandidate();
 
   // Fallbacks: try generic patterns across all lines
   function fallbackMoneyByLabel(labels: string[]): Candidate | null {
@@ -311,40 +405,9 @@ function extractTotalsFromText(rawText: string): ExtractResponse {
     ?? undefined;
   const feesFinal = feesCand ?? fallbackMoneyByLabel(['fees', 'charges', 'discount'])
     ?? undefined;
-  let txnFinal = txnCand ?? fallbackIntByLabel(['transaction', 'txn', 'count']) ?? null;
+  txnFinal = txnFinal ?? txnCand ?? fallbackIntByLabel(['transaction', 'txn', 'count']) ?? null;
 
-  // Extra heuristics for statements like the provided sample:
-  // 1) In "SUMMARY BY CARD TYPE" table, a line like: "Total1,083$563,237.0400.00$563,237.04"
-  //    The first integer after "Total" is item count.
-  if (!txnFinal) {
-    const summaryByCardIdx = linesWithPages.findIndex(lp => lp.text.toLowerCase().includes('summary by card type'));
-    if (summaryByCardIdx !== -1) {
-      for (let i = summaryByCardIdx; i < Math.min(summaryByCardIdx + 50, linesWithPages.length); i += 1) {
-        const line = linesWithPages[i].text.replace(/\s+/g, '');
-        const m = /^Total([0-9]{1,3}(?:,[0-9]{3})*)(?:\$|$)/.exec(line);
-        if (m) {
-          const count = parseInt(m[1].replace(/[,]/g, ''), 10);
-          if (!Number.isNaN(count)) {
-            txnFinal = { value: count, score: 5, source: linesWithPages[i] };
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  // 2) End-of-report TOTAL line like: "TOTAL$563,237.041,083-..." → extract the integer after the money
-  if (!txnFinal) {
-    const endTotalMatch = /\bTOTAL\s*\$\s*[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?\s*([0-9]{1,3}(?:,[0-9]{3})*)/i.exec(normalized.replace(/\s+/g, ' '));
-    if (endTotalMatch) {
-      const count = parseInt(endTotalMatch[1].replace(/[,]/g, ''), 10);
-      if (!Number.isNaN(count)) {
-        // find a nearby source line for traceability
-        const src = linesWithPages.find(lp => /TOTAL/i.test(lp.text));
-        txnFinal = { value: count, score: 4, source: src ?? linesWithPages[0] };
-      }
-    }
-  }
+  // (previous targeted heuristics moved above and now prioritized)
 
   const txnResolved = txnFinal ?? undefined;
 
