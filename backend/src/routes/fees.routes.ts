@@ -311,21 +311,55 @@ function extractTotalsFromText(rawText: string): ExtractResponse {
     ?? undefined;
   const feesFinal = feesCand ?? fallbackMoneyByLabel(['fees', 'charges', 'discount'])
     ?? undefined;
-  const txnFinal = txnCand ?? fallbackIntByLabel(['transaction', 'txn', 'count'])
-    ?? undefined;
+  let txnFinal = txnCand ?? fallbackIntByLabel(['transaction', 'txn', 'count']) ?? null;
 
-  if (!volumeFinal || !feesFinal || !txnFinal) {
+  // Extra heuristics for statements like the provided sample:
+  // 1) In "SUMMARY BY CARD TYPE" table, a line like: "Total1,083$563,237.0400.00$563,237.04"
+  //    The first integer after "Total" is item count.
+  if (!txnFinal) {
+    const summaryByCardIdx = linesWithPages.findIndex(lp => lp.text.toLowerCase().includes('summary by card type'));
+    if (summaryByCardIdx !== -1) {
+      for (let i = summaryByCardIdx; i < Math.min(summaryByCardIdx + 50, linesWithPages.length); i += 1) {
+        const line = linesWithPages[i].text.replace(/\s+/g, '');
+        const m = /^Total([0-9]{1,3}(?:,[0-9]{3})*)(?:\$|$)/.exec(line);
+        if (m) {
+          const count = parseInt(m[1].replace(/[,]/g, ''), 10);
+          if (!Number.isNaN(count)) {
+            txnFinal = { value: count, score: 5, source: linesWithPages[i] };
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // 2) End-of-report TOTAL line like: "TOTAL$563,237.041,083-..." → extract the integer after the money
+  if (!txnFinal) {
+    const endTotalMatch = /\bTOTAL\s*\$\s*[0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?\s*([0-9]{1,3}(?:,[0-9]{3})*)/i.exec(normalized.replace(/\s+/g, ' '));
+    if (endTotalMatch) {
+      const count = parseInt(endTotalMatch[1].replace(/[,]/g, ''), 10);
+      if (!Number.isNaN(count)) {
+        // find a nearby source line for traceability
+        const src = linesWithPages.find(lp => /TOTAL/i.test(lp.text));
+        txnFinal = { value: count, score: 4, source: src ?? linesWithPages[0] };
+      }
+    }
+  }
+
+  const txnResolved = txnFinal ?? undefined;
+
+  if (!volumeFinal || !feesFinal || !txnResolved) {
     throw new Error('Could not reliably extract totals from the statement');
   }
 
   const volume = volumeFinal.value;
   const fees = feesFinal.value;
-  const transactions = Math.floor(txnFinal.value);
+  const transactions = Math.floor(txnResolved.value);
 
   const sources: { page: number; text: string }[] = [
     volumeFinal.source,
     feesFinal.source,
-    txnFinal.source
+    txnResolved.source
   ];
 
   return { volume, transactions, fees, sources };
