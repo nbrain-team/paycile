@@ -279,16 +279,58 @@ function extractTotalsFromText(rawText: string): ExtractResponse {
     return { value: Math.abs(vals[0]), score: 10, source: line };
   }
 
-  // 0) Targeted direct matches with strong precedence
-  const directVolumeLine = linesWithPages.find(lp => /\bamounts? submitted\b/i.test(lp.text));
-  const directFeesLine = linesWithPages.find(lp => /\bfees charged\b/i.test(lp.text));
+  // Helper: look ahead a few lines to find the first money value
+  function firstMoneyFromFollowingLines(startIdx: number, maxLookahead = 3): Candidate | null {
+    for (let i = startIdx + 1; i <= Math.min(startIdx + maxLookahead, linesWithPages.length - 1); i += 1) {
+      const cand = firstMoneyFromLine(linesWithPages[i]);
+      if (cand) return { ...cand, score: cand.score + 2 };
+    }
+    return null;
+  }
 
-  const volumeDirect = directVolumeLine ? firstMoneyFromLine(directVolumeLine) : null;
-  const feesDirect = directFeesLine ? firstMoneyFromLine(directFeesLine) : null;
+  // 0) Targeted direct matches with strong precedence
+  const directVolumeIdx = linesWithPages.findIndex(lp => /\bamounts? submitted\b/i.test(lp.text));
+  const directFeesIdx = linesWithPages.findIndex(lp => /\bfees charged\b/i.test(lp.text));
+
+  const volumeDirect = directVolumeIdx >= 0
+    ? (firstMoneyFromLine(linesWithPages[directVolumeIdx]) ?? firstMoneyFromFollowingLines(directVolumeIdx, 4))
+    : null;
+  const feesDirect = directFeesIdx >= 0
+    ? (firstMoneyFromLine(linesWithPages[directFeesIdx]) ?? firstMoneyFromFollowingLines(directFeesIdx, 4))
+    : null;
 
   // 1) Generic candidates (only if not directly found)
   const volumeCand = volumeDirect ?? findBestCandidate(volumeKeywords, 'money', scoreLineForVolume, true);
-  const feesCand = feesDirect ?? findBestCandidate(feesKeywords, 'money', scoreLineForFees, false);
+  // Special finder for fees: prefer negative amounts when present
+  function findBestFeesCandidate(): Candidate | null {
+    const candidates: (Candidate & { negative: boolean })[] = [];
+    for (let i = 0; i < linesWithPages.length; i += 1) {
+      const lp = linesWithPages[i];
+      const lower = lp.text.toLowerCase();
+      if (!feesKeywords.some(k => lower.includes(k))) continue;
+      const hood = getNeighborhood(i, 2);
+      hood.forEach(nl => {
+        const vals = extractMoney(nl.text);
+        vals.forEach(v => {
+          const neg = /\(|-/.test(nl.text);
+          const score = scoreLineForFees(nl.text, neg) + (/(^|\s)total(\s|$)/i.test(nl.text) ? 1 : 0);
+          candidates.push({ value: Math.abs(v), score, source: nl, negative: neg });
+        });
+      });
+    }
+    if (candidates.length === 0) return null;
+    const negatives = candidates.filter(c => c.negative);
+    if (negatives.length > 0) {
+      negatives.sort((a, b) => (b.score - a.score) || (b.value - a.value));
+      const { negative, ...rest } = negatives[0];
+      return rest;
+    }
+    candidates.sort((a, b) => (b.score - a.score));
+    const { negative, ...rest } = candidates[0];
+    return rest;
+  }
+
+  const feesCand = feesDirect ?? findBestFeesCandidate();
 
   // For transactions, avoid treating currency as counts
   function extractNonMoneyInts(line: string): number[] {
