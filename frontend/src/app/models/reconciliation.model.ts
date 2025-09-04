@@ -17,10 +17,18 @@ export interface Reconciliation {
     amount: number;
     dueDate: string;
     status: string;
+    billingPeriodStart?: string;
+    billingPeriodEnd?: string;
+    lineItems?: Array<{
+      id: string;
+      description: string;
+      type: 'premium' | 'tax' | 'fee';
+      amount: number;
+    }>;
   };
   status: 'matched' | 'unmatched' | 'disputed';
   matchedAmount: number;
-  confidence?: number;
+  confidence?: number; // percentage 0-100
   suggestedInvoiceId?: string;
   suggestedInvoice?: {
     invoiceNumber: string;
@@ -28,7 +36,14 @@ export interface Reconciliation {
     confidence: number;
   };
   notes?: string;
-  aiSuggestions?: AISuggestion[];
+  aiSuggestions?: {
+    suggestedMatches?: Array<{
+      invoiceId: string;
+      confidence: number;
+      reason: string;
+    }>;
+    anomalies?: string[];
+  };
   createdAt: string;
   updatedAt: string;
 }

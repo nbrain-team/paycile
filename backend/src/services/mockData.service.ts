@@ -505,6 +505,7 @@ export const generateMockReconciliations = (payments: any[], invoices: any[]) =>
       invoiceId: invoice?.id || null,
       invoice,
       status,
+      matchedAmount: invoice ? Math.min(payment.amount, invoice.amount) : 0,
       confidenceScore: status === 'matched' ? 0.85 + Math.random() * 0.15 : 
                       status === 'disputed' ? 0.4 + Math.random() * 0.3 :
                       0.2 + Math.random() * 0.3,
@@ -536,13 +537,64 @@ export const generateAllMockData = () => {
   const payments = generateMockPayments(invoices);
   const reconciliations = generateMockReconciliations(payments, invoices);
   
+  // Seed realistic edge cases for reconciliation issues
+  // 1) Duplicate payments for same client and amount
+  if (payments.length > 5) {
+    const p = payments[2];
+    payments.push({
+      ...p,
+      id: uuidv4(),
+      paymentReference: `${p.paymentReference}-DUP`,
+      paymentDate: new Date(new Date(p.paymentDate).getTime() + 24*60*60*1000),
+      processorReference: `${p.processorReference}-DUP`,
+    });
+  }
+  // 2) Overpayment compared to invoice
+  if (invoices.length > 3) {
+    const inv = invoices[3];
+    const overPay = {
+      id: uuidv4(),
+      paymentReference: `PAY-OVER-${String(Math.random()).slice(2,8)}`,
+      clientId: inv.clientId,
+      client: inv.client,
+      amount: Math.round((inv.amount + 150) * 100) / 100,
+      paymentMethod: 'ach',
+      status: 'completed',
+      paymentDate: new Date(inv.dueDate),
+      processorReference: `STRIPE-${Math.random().toString(36).substring(7)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    payments.push(overPay);
+  }
+  // 3) Underpayment and partial period mismatch
+  if (invoices.length > 4) {
+    const inv = invoices[4];
+    const underPay = {
+      id: uuidv4(),
+      paymentReference: `PAY-UNDER-${String(Math.random()).slice(2,8)}`,
+      clientId: inv.clientId,
+      client: inv.client,
+      amount: Math.round((inv.amount * 0.5) * 100) / 100,
+      paymentMethod: 'check',
+      status: 'completed',
+      paymentDate: new Date(new Date(inv.billingPeriodEnd).getTime() + 15*24*60*60*1000),
+      processorReference: `STRIPE-${Math.random().toString(36).substring(7)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    payments.push(underPay);
+  }
+  // Recompute reconciliations including seeded issues
+  const seededReconciliations = generateMockReconciliations(payments, invoices);
+  
   return {
     users,
     insuranceCompanies,
     policies,
     invoices,
     payments,
-    reconciliations,
+    reconciliations: seededReconciliations,
   };
 };
 

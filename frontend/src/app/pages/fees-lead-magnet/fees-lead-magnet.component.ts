@@ -31,6 +31,23 @@ import { FeesService, CalcResponse, ExtractResponse } from '../../services/fees.
             <div *ngIf="uploadState() === 'uploading'" class="animate-pulse text-sm">Uploading…</div>
             <div *ngIf="uploadState() === 'extracting'" class="animate-pulse text-sm">Extracting totals…</div>
             <div *ngIf="error()" class="text-error-600 text-sm">{{ error() }}</div>
+            <div *ngIf="extract()" class="card">
+              <h3 class="font-medium mb-2">Parsed totals</h3>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div class="text-muted-foreground">Amount Submitted</div>
+                  <div class="font-semibold">{{ formatDollars(extract()?.volume) }}</div>
+                </div>
+                <div>
+                  <div class="text-muted-foreground">Fees Charged</div>
+                  <div class="font-semibold">{{ formatDollars(extract()?.fees) }}</div>
+                </div>
+                <div>
+                  <div class="text-muted-foreground">Total Items</div>
+                  <div class="font-semibold">{{ extract()?.transactions?.toLocaleString() }}</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Quick estimate -->
@@ -138,8 +155,13 @@ export class FeesLeadMagnetComponent {
         this.uploadState.set('extracting');
         this.fees.extract(r.fileId).subscribe({
           next: ex => {
+            console.log('[fees] extract response', ex);
             this.extract.set(ex);
             this.uploadState.set('idle');
+            // Autofill quick estimate with extracted values
+            this.form.volume = ex.volume ?? 0;
+            this.form.transactions = ex.transactions ?? 0;
+            this.form.fees = ex.fees ?? 0;
             this.runCalculation(ex.volume, ex.transactions, ex.fees);
           },
           error: (e) => {
@@ -166,6 +188,7 @@ export class FeesLeadMagnetComponent {
   }
 
   private runCalculation(volume: number, transactions: number, fees: number) {
+    console.log('[fees] calculate input', { volume, transactions, fees });
     this.fees.calculate(volume, transactions, fees).subscribe({
       next: r => this.results.set(r),
       error: (e) => this.error.set(e?.error?.error || 'Calculation failed')

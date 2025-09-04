@@ -29,8 +29,8 @@ import {
   ɵɵdefineNgModule,
   ɵɵinject
 } from "./chunk-ZZWHS2HR.js";
-import "./chunk-745DPRD4.js";
 import "./chunk-GU2SYA53.js";
+import "./chunk-745DPRD4.js";
 import "./chunk-L27SSK7Z.js";
 import {
   __objRest,

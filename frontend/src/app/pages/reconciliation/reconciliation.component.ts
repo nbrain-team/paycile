@@ -144,7 +144,8 @@ import { Reconciliation } from '../../models/reconciliation.model';
             </tr>
 
             <!-- Data Rows -->
-            <tr *ngFor="let rec of reconciliations()" class="hover:bg-gray-50">
+            <ng-container *ngFor="let rec of reconciliations(); let i = index">
+            <tr class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">
                   {{ rec.payment?.paymentReference || 'Unknown' }}
@@ -155,7 +156,7 @@ import { Reconciliation } from '../../models/reconciliation.model';
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div *ngIf="rec.invoice">
-                  <div class="text-sm font-medium text-gray-900">
+                  <div class="text-sm font-medium text-gray-900 cursor-pointer underline" (click)="toggleRow(i)">
                     {{ rec.invoice.invoiceNumber }}
                   </div>
                   <div class="text-sm text-gray-500">
@@ -163,7 +164,7 @@ import { Reconciliation } from '../../models/reconciliation.model';
                   </div>
                 </div>
                 <div *ngIf="!rec.invoice && rec.suggestedInvoice" class="bg-yellow-50 p-2 rounded">
-                  <div class="text-sm font-medium text-yellow-800">
+                  <div class="text-sm font-medium text-yellow-800 cursor-pointer underline" (click)="toggleRow(i)">
                     Suggested: {{ rec.suggestedInvoice.invoiceNumber }}
                   </div>
                   <div class="text-xs text-yellow-600">
@@ -264,6 +265,51 @@ import { Reconciliation } from '../../models/reconciliation.model';
                 </div>
               </td>
             </tr>
+            <!-- Expandable Details Row -->
+            <tr *ngIf="expandedRowIndex === i">
+              <td colspan="6" class="px-6 pb-4">
+                <div class="bg-gray-50 border border-gray-200 rounded-md p-4">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <h4 class="text-sm font-semibold text-gray-800 mb-2">Payment</h4>
+                      <p class="text-sm text-gray-700">Ref: {{ rec.payment?.paymentReference }}</p>
+                      <p class="text-sm text-gray-700">Amount: {{ formatCurrency(rec.payment?.amount || 0) }}</p>
+                      <p class="text-sm text-gray-700">Date: {{ formatDate(rec.payment?.paymentDate || '') }}</p>
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-semibold text-gray-800 mb-2">Invoice</h4>
+                      <ng-container *ngIf="rec.invoice; else suggestedBlock">
+                        <p class="text-sm text-gray-700">No.: {{ rec.invoice?.invoiceNumber }}</p>
+                        <p class="text-sm text-gray-700">Amount: {{ formatCurrency(rec.invoice?.amount || 0) }}</p>
+                        <p class="text-sm text-gray-700">Due: {{ formatDate(rec.invoice?.dueDate || '') }}</p>
+                        <p class="text-sm text-gray-700" *ngIf="rec.invoice?.billingPeriodStart && rec.invoice?.billingPeriodEnd">Period: {{ formatDate(rec.invoice?.billingPeriodStart || '') }} → {{ formatDate(rec.invoice?.billingPeriodEnd || '') }}</p>
+                      </ng-container>
+                      <ng-template #suggestedBlock>
+                        <p class="text-sm text-yellow-800" *ngIf="rec.suggestedInvoice">Suggested: {{ rec.suggestedInvoice.invoiceNumber }} ({{ rec.suggestedInvoice.confidence }}%)</p>
+                      </ng-template>
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-semibold text-gray-800 mb-2">AI Findings</h4>
+                      <ul class="list-disc list-inside text-sm text-gray-700" *ngIf="rec.aiSuggestions?.anomalies?.length; else noIssues">
+                        <li *ngFor="let a of rec.aiSuggestions?.anomalies">{{ a }}</li>
+                      </ul>
+                      <ng-template #noIssues>
+                        <p class="text-sm text-gray-500">No anomalies detected.</p>
+                      </ng-template>
+                      <div class="mt-2" *ngIf="rec.aiSuggestions?.suggestedMatches?.length">
+                        <p class="text-xs text-gray-600 font-medium">Top suggestions:</p>
+                        <ul class="mt-1 text-xs text-gray-700 space-y-1">
+                          <li *ngFor="let s of rec.aiSuggestions?.suggestedMatches">
+                            • {{ s.invoiceId | slice:0:6 }}… ({{ s.confidence }}%) — {{ s.reason }}
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            </ng-container>
           </tbody>
         </table>
       </div>
@@ -469,6 +515,7 @@ export class ReconciliationComponent implements OnInit {
   selectedInvoiceId = '';
   disputeNotes = '';
   resolutionNotes = '';
+  expandedRowIndex: number | null = null;
   
   // Expose Math for template
   Math = Math;
@@ -639,6 +686,10 @@ export class ReconciliationComponent implements OnInit {
   viewDetails(rec: Reconciliation) {
     // TODO: Implement detailed view modal or navigate to detail page
     console.log('View details:', rec);
+  }
+
+  toggleRow(i: number) {
+    this.expandedRowIndex = this.expandedRowIndex === i ? null : i;
   }
 
   onFilterChange() {
