@@ -128,6 +128,135 @@ router.post('/calc', (req: Request, res: Response) => {
   });
 });
 
+router.post('/calc-advanced', (req: Request, res: Response) => {
+  const {
+    basis,
+    totalVolume,
+    totalTransactions,
+    totalFees,
+    perCard,
+    mcc,
+    monthlyFixedFees,
+    perTxnFee
+  } = req.body as {
+    basis?: 'monthly' | 'annual';
+    totalVolume?: number;
+    totalTransactions?: number;
+    totalFees?: number;
+    perCard?: {
+      visa?: { volume?: number; transactions?: number };
+      mc?: { volume?: number; transactions?: number };
+      discover?: { volume?: number; transactions?: number };
+      amex?: { volume?: number; transactions?: number };
+    };
+    mcc?: string;
+    monthlyFixedFees?: number;
+    perTxnFee?: number;
+  };
+
+  if (!totalVolume || !totalTransactions || !totalFees) {
+    res.status(400).json({ error: 'totalVolume, totalTransactions, and totalFees are required' });
+    return;
+  }
+
+  const inputBasis: 'monthly' | 'annual' = basis === 'annual' ? 'annual' : 'monthly';
+  const monthsInPeriod = inputBasis === 'annual' ? 12 : 1;
+  const volume = totalVolume;
+  const transactions = totalTransactions;
+  const fees = totalFees;
+  const fixedFeesMonthly = Math.max(0, monthlyFixedFees ?? 0);
+  const perTransactionFee = Math.max(0, perTxnFee ?? 0);
+
+  // MCC-based base interchange averages (as decimal)
+  // Values provided by client email; structure allows future expansion by MCC
+  const baseByMCC: Record<string, { visa: number; mc: number; discover: number; amex: number }> = {
+    propane: { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 },
+    '5983': { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 },
+    '4900': { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 },
+    insurance: { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 },
+    '5960': { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 },
+    '6300': { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 },
+    real_estate: { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 },
+    '6513': { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 },
+    default: { visa: 0.0210, mc: 0.0210, discover: 0.0210, amex: 0.0220 }
+  };
+
+  const base = baseByMCC[mcc ?? ''] ?? baseByMCC.default;
+
+  // Card mix handling
+  const vVisa = Math.max(0, perCard?.visa?.volume ?? 0);
+  const vMC = Math.max(0, perCard?.mc?.volume ?? 0);
+  const vDisc = Math.max(0, perCard?.discover?.volume ?? 0);
+  const vAmex = Math.max(0, perCard?.amex?.volume ?? 0);
+  const volSum = vVisa + vMC + vDisc + vAmex;
+  const usePerCard = volSum > 0 && Math.abs(volSum - volume) < Math.max(50, volume * 0.01);
+
+  const cardMix = usePerCard ? {
+    visa: vVisa / volSum,
+    mc: vMC / volSum,
+    discover: vDisc / volSum,
+    amex: vAmex / volSum,
+  } : {
+    // If no breakdown, assume Visa-heavy mix as conservative default
+    visa: 0.6,
+    mc: 0.3,
+    discover: 0.05,
+    amex: 0.05,
+  };
+
+  const weightedBaseRate = base.visa * cardMix.visa + base.mc * cardMix.mc + base.discover * cardMix.discover + base.amex * cardMix.amex;
+
+  const perTxnCost = perTransactionFee * transactions;
+  const fixedFeesForPeriod = fixedFeesMonthly * monthsInPeriod;
+
+  const proposedRateDecimal = weightedBaseRate + (perTxnCost + fixedFeesForPeriod) / volume;
+
+  const avgTicket = volume / transactions;
+  const currentEffRate = (fees / volume) * 100;
+  const proposedEffRate = proposedRateDecimal * 100;
+  const savingsDollars = (currentEffRate / 100 - proposedRateDecimal) * volume;
+  const rateDelta = proposedEffRate - currentEffRate;
+
+  const monthlySavings = inputBasis === 'monthly' ? savingsDollars : savingsDollars / 12;
+  const annualSavings = monthlySavings * 12;
+  const threeYearSavings = annualSavings * 3;
+  const fiveYearSavings = annualSavings * 5;
+
+  // Fee recovery program: recover ~90% of current fees (illustrative)
+  const monthlyFees = inputBasis === 'monthly' ? fees : fees / 12;
+  const feeRecoveryMonthly = monthlyFees * 0.90;
+  const feeRecoveryAnnual = feeRecoveryMonthly * 12;
+
+  res.json({
+    avgTicket,
+    currentEffRate,
+    proposedEffRate,
+    savingsDollars,
+    rateDelta,
+    horizons: {
+      monthly: monthlySavings,
+      annual: annualSavings,
+      threeYear: threeYearSavings,
+      fiveYear: fiveYearSavings,
+    },
+    feeRecovery: {
+      monthly: feeRecoveryMonthly,
+      annual: feeRecoveryAnnual,
+      threeYear: feeRecoveryAnnual * 3,
+      fiveYear: feeRecoveryAnnual * 5,
+    },
+    assumptions: {
+      mcc: mcc || 'default',
+      baseRates: base,
+      cardMix,
+      usedPerCardMix: usePerCard,
+      perTxnFee: perTransactionFee,
+      monthlyFixedFees: fixedFeesMonthly,
+      basis: inputBasis,
+    }
+  });
+});
+
 function extractTotalsFromText(rawText: string): ExtractResponse {
   const normalized = rawText
     .replace(/[\u2018\u2019]/g, "'")

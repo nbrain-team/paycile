@@ -1,7 +1,7 @@
 import { Component, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { FeesService, CalcResponse, ExtractResponse } from '../../services/fees.service';
+import { FeesService, CalcResponse, ExtractResponse, AdvancedCalcRequest, AdvancedCalcResponse } from '../../services/fees.service';
 
 @Component({
   selector: 'app-fees-lead-magnet',
@@ -18,6 +18,7 @@ import { FeesService, CalcResponse, ExtractResponse } from '../../services/fees.
       <div class="flex flex-wrap gap-3 mb-6">
         <button class="btn btn-primary" [class.btn-outline]="mode() !== 'upload'" (click)="setMode('upload')">Upload statement (PDF)</button>
         <button class="btn btn-secondary" [class.btn-outline]="mode() !== 'quick'" (click)="setMode('quick')">Answer 3 quick questions</button>
+        <button class="btn btn-secondary" [class.btn-outline]="mode() !== 'advanced'" (click)="setMode('advanced')">Advanced (MCC & card mix)</button>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -66,6 +67,109 @@ import { FeesService, CalcResponse, ExtractResponse } from '../../services/fees.
             </div>
             <div class="md:col-span-3">
               <button class="btn btn-primary" (click)="runQuickEstimate()">Get estimate</button>
+            </div>
+          </div>
+
+          <!-- Advanced estimate -->
+          <div *ngIf="mode() === 'advanced'" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="label">Basis</label>
+                <select class="input w-full" [(ngModel)]="advForm.basis">
+                  <option value="monthly">Monthly</option>
+                  <option value="annual">Annual</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Total Volume ($)</label>
+                <input class="input w-full" type="number" min="0" [(ngModel)]="advForm.totalVolume" />
+              </div>
+              <div>
+                <label class="label">Total Fees ($)</label>
+                <input class="input w-full" type="number" min="0" [(ngModel)]="advForm.totalFees" />
+              </div>
+              <div>
+                <label class="label"># Transactions</label>
+                <input class="input w-full" type="number" min="1" [(ngModel)]="advForm.totalTransactions" />
+              </div>
+              <div>
+                <label class="label">MCC</label>
+                <select class="input w-full" [(ngModel)]="advForm.mcc">
+                  <option value="5983">Propane (5983)</option>
+                  <option value="4900">Utilities (4900)</option>
+                  <option value="5960">Insurance (5960)</option>
+                  <option value="6300">Insurance (6300)</option>
+                  <option value="6513">Real Estate (6513)</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Per-transaction fee ($)</label>
+                <input class="input w-full" type="number" min="0" step="0.01" [(ngModel)]="advForm.perTxnFee" />
+              </div>
+              <div>
+                <label class="label">Monthly fixed fees ($)</label>
+                <input class="input w-full" type="number" min="0" step="0.01" [(ngModel)]="advForm.monthlyFixedFees" />
+              </div>
+            </div>
+
+            <div class="card">
+              <h3 class="font-medium mb-2">Card mix (optional)</h3>
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <label class="label">Visa Volume ($)</label>
+                  <input class="input w-full" type="number" min="0" [(ngModel)]="advForm.perCard!.visa!.volume" />
+                </div>
+                <div>
+                  <label class="label">MC Volume ($)</label>
+                  <input class="input w-full" type="number" min="0" [(ngModel)]="advForm.perCard!.mc!.volume" />
+                </div>
+                <div>
+                  <label class="label">Discover Volume ($)</label>
+                  <input class="input w-full" type="number" min="0" [(ngModel)]="advForm.perCard!.discover!.volume" />
+                </div>
+                <div>
+                  <label class="label">Amex Volume ($)</label>
+                  <input class="input w-full" type="number" min="0" [(ngModel)]="advForm.perCard!.amex!.volume" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <button class="btn btn-primary" (click)="runAdvancedEstimate()">Run Advanced Estimate</button>
+            </div>
+            <div *ngIf="advResults() as r" class="card">
+              <h3 class="font-medium mb-2">Multi-period savings</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div>
+                  <div class="text-muted-foreground">Monthly</div>
+                  <div class="font-semibold">{{ formatDollars(r.horizons.monthly) }}</div>
+                </div>
+                <div>
+                  <div class="text-muted-foreground">Annual</div>
+                  <div class="font-semibold">{{ formatDollars(r.horizons.annual) }}</div>
+                </div>
+                <div>
+                  <div class="text-muted-foreground">3-Year</div>
+                  <div class="font-semibold">{{ formatDollars(r.horizons.threeYear) }}</div>
+                </div>
+                <div>
+                  <div class="text-muted-foreground">5-Year</div>
+                  <div class="font-semibold">{{ formatDollars(r.horizons.fiveYear) }}</div>
+                </div>
+              </div>
+              <div class="mt-4">
+                <h4 class="font-medium mb-1">Fee Recovery Program (90%)</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div class="text-muted-foreground">Monthly</div>
+                    <div class="font-semibold">{{ formatDollars(r.feeRecovery.monthly) }}</div>
+                  </div>
+                  <div>
+                    <div class="text-muted-foreground">Annual</div>
+                    <div class="font-semibold">{{ formatDollars(r.feeRecovery.annual) }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -123,12 +227,13 @@ import { FeesService, CalcResponse, ExtractResponse } from '../../services/fees.
   `
 })
 export class FeesLeadMagnetComponent {
-  mode = signal<'upload' | 'quick'>('upload');
+  mode = signal<'upload' | 'quick' | 'advanced'>('upload');
   uploadState = signal<'idle' | 'uploading' | 'extracting'>('idle');
   error = signal<string | null>(null);
   fileId = signal<string | null>(null);
   extract = signal<ExtractResponse | null>(null);
   results = signal<CalcResponse | null>(null);
+  advResults = signal<AdvancedCalcResponse | null>(null);
 
   form = {
     volume: 0,
@@ -136,9 +241,25 @@ export class FeesLeadMagnetComponent {
     fees: 0
   };
 
+  advForm: AdvancedCalcRequest = {
+    basis: 'monthly',
+    totalVolume: 0,
+    totalTransactions: 0,
+    totalFees: 0,
+    mcc: '5983',
+    monthlyFixedFees: 0,
+    perTxnFee: 0,
+    perCard: {
+      visa: { volume: 0, transactions: 0 },
+      mc: { volume: 0, transactions: 0 },
+      discover: { volume: 0, transactions: 0 },
+      amex: { volume: 0, transactions: 0 },
+    }
+  };
+
   constructor(private fees: FeesService) {}
 
-  setMode(m: 'upload' | 'quick') {
+  setMode(m: 'upload' | 'quick' | 'advanced') {
     this.mode.set(m);
     this.error.set(null);
   }
@@ -185,6 +306,19 @@ export class FeesLeadMagnetComponent {
     }
     this.error.set(null);
     this.runCalculation(volume, transactions, fees);
+  }
+
+  runAdvancedEstimate() {
+    const p = this.advForm;
+    if (!p.totalVolume || !p.totalTransactions || !p.totalFees) {
+      this.error.set('Please enter volume, transactions, and fees');
+      return;
+    }
+    this.error.set(null);
+    this.fees.calculateAdvanced(p).subscribe({
+      next: r => this.advResults.set(r),
+      error: (e) => this.error.set(e?.error?.error || 'Advanced calculation failed')
+    });
   }
 
   private runCalculation(volume: number, transactions: number, fees: number) {

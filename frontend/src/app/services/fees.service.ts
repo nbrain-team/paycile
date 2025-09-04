@@ -18,6 +18,38 @@ export interface CalcResponse {
   rateDelta: number;
 }
 
+export interface AdvancedCalcRequest {
+  basis: 'monthly' | 'annual';
+  totalVolume: number;
+  totalTransactions: number;
+  totalFees: number;
+  mcc?: string;
+  monthlyFixedFees?: number;
+  perTxnFee?: number;
+  perCard?: {
+    visa?: { volume?: number; transactions?: number };
+    mc?: { volume?: number; transactions?: number };
+    discover?: { volume?: number; transactions?: number };
+    amex?: { volume?: number; transactions?: number };
+  };
+}
+
+export interface AdvancedCalcResponse extends CalcResponse {
+  horizons: {
+    monthly: number;
+    annual: number;
+    threeYear: number;
+    fiveYear: number;
+  };
+  feeRecovery: {
+    monthly: number;
+    annual: number;
+    threeYear: number;
+    fiveYear: number;
+  };
+  assumptions: any;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FeesService {
   private readonly baseUrl = `${environment.apiUrl}/fees`;
@@ -36,6 +68,10 @@ export class FeesService {
 
   calculate(volume: number, transactions: number, fees: number): Observable<CalcResponse> {
     return this.http.post<CalcResponse>(`${this.baseUrl}/calc`, { volume, transactions, fees });
+  }
+
+  calculateAdvanced(payload: AdvancedCalcRequest): Observable<AdvancedCalcResponse> {
+    return this.http.post<AdvancedCalcResponse>(`${this.baseUrl}/calc-advanced`, payload);
   }
 }
 
