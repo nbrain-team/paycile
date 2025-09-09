@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, ExtractResponse } from '../../services/fees.service';
@@ -15,28 +15,40 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
       </div>
 
       <!-- Conversation -->
-      <div class="card h-[60vh] overflow-y-auto p-4 space-y-4">
+      <div #scrollContainer class="card h-[60vh] overflow-y-auto p-4 space-y-4">
         <div *ngFor="let m of messages()" class="flex" [class.justify-end]="m.role === 'user'">
           <div [ngClass]="m.role === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'" class="max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap">
             <div *ngIf="m.type === 'text'">{{ m.text }}</div>
             <div *ngIf="m.type === 'result'">
-              <div class="font-medium mb-1">Quick Estimate</div>
-              <div class="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <div class="text-gray-500">Current ER</div>
-                  <div class="font-semibold">{{ formatPercent(m.result?.currentEffRate) }}</div>
+              <div class="font-medium mb-2">Quick Estimate</div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div class="space-y-1">
+                  <div class="text-gray-500">You Entered</div>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div class="text-gray-500">Basis</div>
+                    <div class="font-semibold capitalize">{{ m.input?.basis }}</div>
+                    <div class="text-gray-500">Volume</div>
+                    <div class="font-semibold">{{ formatDollars(m.input?.volume) }}</div>
+                    <div class="text-gray-500">Transactions</div>
+                    <div class="font-semibold">{{ m.input?.transactions?.toLocaleString() }}</div>
+                    <div class="text-gray-500">Fees</div>
+                    <div class="font-semibold">{{ formatDollars(m.input?.fees) }}</div>
+                    <div class="text-gray-500">Current ER</div>
+                    <div class="font-semibold">{{ formatPercent(m.result?.currentEffRate) }}</div>
+                  </div>
                 </div>
-                <div>
-                  <div class="text-gray-500">Proposed ER</div>
-                  <div class="font-semibold">{{ formatPercent(m.result?.proposedEffRate) }}</div>
-                </div>
-                <div class="col-span-2">
-                  <div class="text-gray-500">Estimated Savings</div>
-                  <div class="font-semibold">{{ formatDollars(m.result?.savingsDollars) }} ({{ formatPercent(m.result?.rateDelta) }})</div>
-                </div>
-                <div>
-                  <div class="text-gray-500">Avg Ticket</div>
-                  <div class="badge">{{ formatDollars(m.result?.avgTicket) }}</div>
+                <div class="space-y-1">
+                  <div class="text-gray-500">Our Estimate</div>
+                  <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div class="text-gray-500">Category</div>
+                    <div class="font-semibold">{{ formatCategory(m.input?.mccCategory) }}</div>
+                    <div class="text-gray-500">Proposed ER</div>
+                    <div class="font-semibold">{{ formatPercent(m.result?.proposedEffRate) }}</div>
+                    <div class="text-gray-500">Estimated Savings</div>
+                    <div class="font-semibold">{{ formatDollars(m.result?.savingsDollars) }} ({{ formatPercent(m.result?.rateDelta) }})</div>
+                    <div class="text-gray-500">Avg Ticket</div>
+                    <div class="badge">{{ formatDollars(m.result?.avgTicket) }}</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -92,7 +104,9 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
   styles: []
 })
 export class ChatComponent {
-  messages = signal<Array<{ role: 'user' | 'assistant'; type: 'text' | 'result' | 'advanced'; text?: string; result?: CalcResponse; adv?: AdvancedCalcResponse }>>([
+  @ViewChild('scrollContainer') scrollContainer?: ElementRef<HTMLDivElement>;
+
+  messages = signal<Array<{ role: 'user' | 'assistant'; type: 'text' | 'result' | 'advanced'; text?: string; result?: CalcResponse; adv?: AdvancedCalcResponse; input?: { basis: string; volume: number; transactions: number; fees: number; mccCategory?: string } }>>([
     { role: 'assistant', type: 'text', text: 'Hi! Let’s estimate your credit card processing savings. Is your total volume and fees monthly or annual? You can also upload a statement PDF.' }
   ]);
   stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'collect_mcc' | 'basic_done' | 'advanced_done'>('collect_basis');
@@ -112,6 +126,15 @@ export class ChatComponent {
   perCard: NonNullable<AdvancedCalcRequest['perCard']> = { visa: {}, mc: {}, discover: {}, amex: {} };
 
   constructor(private feesService: FeesService) {}
+
+  // Auto-scroll to bottom when messages change
+  autoScroll = effect(() => {
+    this.messages();
+    queueMicrotask(() => {
+      const el = this.scrollContainer?.nativeElement;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  });
 
   placeholder(): string {
     switch (this.stage()) {
@@ -203,7 +226,7 @@ export class ChatComponent {
   calculateBasic() {
     this.feesService.calculate(this.volume, this.transactions, this.fees, this.mccCategory).subscribe({
       next: (r: CalcResponse) => {
-        this.messages.update((m) => [...m, { role: 'assistant', type: 'result', result: r }]);
+        this.messages.update((m) => [...m, { role: 'assistant', type: 'result', result: r, input: { basis: this.basis, volume: this.volume, transactions: this.transactions, fees: this.fees, mccCategory: this.mccCategory } }]);
         this.stage.set('advanced_done');
         this.pushAssistant('If you give us 10 minutes of your time, we can narrow this down even further. Want to schedule a call here?');
       },
@@ -255,5 +278,10 @@ export class ChatComponent {
     const abs = Math.abs(v);
     if (abs >= 10) return `$${Math.round(v).toLocaleString()}`;
     return `$${v.toFixed(2)}`;
+  }
+
+  formatCategory(cat?: string): string {
+    if (!cat) return '—';
+    return cat.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 }
