@@ -21,32 +21,38 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
             <div *ngIf="m.type === 'text'">{{ m.text }}</div>
             <div *ngIf="m.type === 'result'">
               <div class="font-medium mb-1">Quick Estimate</div>
-              <div class="text-xs text-gray-500 mb-2">Category: <span class="font-medium text-gray-700">{{ formatCategory(m.input?.mccCategory) }}</span></div>
-              <div class="grid grid-cols-1 md:grid-cols-2 text-xs border border-gray-200 rounded-md overflow-hidden md:divide-x md:divide-gray-200">
-                <div class="p-3">
-                  <div class="font-medium mb-2">Before</div>
-                  <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <div class="text-gray-500">Basis</div>
-                    <div class="font-semibold capitalize">{{ m.input?.basis }}</div>
-                    <div class="text-gray-500">Volume</div>
-                    <div class="font-semibold">{{ formatDollars(m.input?.volume) }}</div>
-                    <div class="text-gray-500">Transactions</div>
-                    <div class="font-semibold">{{ m.input?.transactions?.toLocaleString() }}</div>
-                    <div class="text-gray-500">Fees</div>
-                    <div class="font-semibold">{{ formatDollars(m.input?.fees) }}</div>
-                    <div class="text-gray-500">Current ER</div>
-                    <div class="font-semibold">{{ formatPercent(m.result?.currentEffRate) }}</div>
-                  </div>
+              <div class="text-xs text-gray-500 mb-2">
+                Category: <span class="font-medium text-gray-700">{{ formatCategory(m.input?.mccCategory) }}</span>
+                · Basis: <span class="font-medium text-gray-700">Yearly</span>
+              </div>
+              <div class="text-xs border border-gray-200 rounded-md overflow-hidden">
+                <div class="grid grid-cols-4 bg-gray-50 text-gray-600 px-3 py-2">
+                  <div></div>
+                  <div class="text-center font-medium">Current</div>
+                  <div class="text-center font-medium">Proposed</div>
+                  <div class="text-center font-medium">% +/-</div>
                 </div>
-                <div class="p-3">
-                  <div class="font-medium mb-2">After</div>
-                  <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <div class="text-gray-500">Proposed ER</div>
-                    <div class="font-semibold">{{ formatPercent(m.result?.proposedEffRate) }}</div>
-                    <div class="text-gray-500">Estimated Savings</div>
-                    <div class="font-semibold">{{ formatDollars(m.result?.savingsDollars) }} ({{ formatPercent(m.result?.rateDelta) }})</div>
-                    <div class="text-gray-500">Avg Ticket</div>
-                    <div class="badge">{{ formatDollars(m.result?.avgTicket) }}</div>
+                <div class="divide-y divide-gray-200">
+                  <!-- Volume row (yearly) -->
+                  <div class="grid grid-cols-4 items-center px-3 py-2">
+                    <div class="text-gray-500">Volume</div>
+                    <div class="text-center font-semibold">{{ formatDollars(yearlyVolume(m.input)) }}</div>
+                    <div class="text-center font-semibold">{{ formatDollars(yearlyVolume(m.input)) }}</div>
+                    <div class="text-center font-semibold">{{ formatPercent(0) }}</div>
+                  </div>
+                  <!-- Current ER row -->
+                  <div class="grid grid-cols-4 items-center px-3 py-2">
+                    <div class="text-gray-500">Current ER</div>
+                    <div class="text-center font-semibold">{{ formatPercent(m.result?.currentEffRate) }}</div>
+                    <div class="text-center font-semibold">{{ formatPercent(m.result?.proposedEffRate) }}</div>
+                    <div class="text-center font-semibold">{{ formatPercent(m.result?.rateDelta) }}</div>
+                  </div>
+                  <!-- Fees row (yearly) -->
+                  <div class="grid grid-cols-4 items-center px-3 py-2">
+                    <div class="text-gray-500">Fees</div>
+                    <div class="text-center font-semibold">{{ formatDollars(yearlyFees(m.input)) }}</div>
+                    <div class="text-center font-semibold">{{ formatDollars(proposedFeesYearly(m.result, m.input)) }}</div>
+                    <div class="text-center font-semibold">{{ formatPercent(percentChange(yearlyFees(m.input), proposedFeesYearly(m.result, m.input))) }}</div>
                   </div>
                 </div>
               </div>
@@ -282,5 +288,27 @@ export class ChatComponent {
   formatCategory(cat?: string): string {
     if (!cat) return '—';
     return cat.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  // Helpers for yearly normalization and comparisons
+  yearlyVolume(input?: { basis?: string; volume?: number }): number {
+    if (!input) return 0;
+    const v = input.volume ?? 0;
+    return (input.basis === 'annual' ? v : v * 12);
+  }
+  yearlyFees(input?: { basis?: string; fees?: number }): number {
+    if (!input) return 0;
+    const f = input.fees ?? 0;
+    return (input.basis === 'annual' ? f : f * 12);
+  }
+  proposedFeesYearly(result?: CalcResponse | null, input?: { basis?: string; volume?: number }): number {
+    if (!result || !input) return 0;
+    const volumeYear = this.yearlyVolume(input);
+    const proposedRateDecimal = (result.proposedEffRate ?? 0) / 100;
+    return volumeYear * proposedRateDecimal;
+  }
+  percentChange(current: number, proposed: number): number {
+    if (!current) return 0;
+    return ((proposed - current) / current) * 100;
   }
 }
