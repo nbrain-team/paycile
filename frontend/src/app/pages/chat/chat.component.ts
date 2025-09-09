@@ -147,8 +147,10 @@ export class ChatComponent {
             this.volume = ex.volume;
             this.transactions = ex.transactions;
             this.fees = ex.fees;
-            this.pushAssistant(`I found Volume ${this.formatDollars(ex.volume)}, Fees ${this.formatDollars(ex.fees)}, Transactions ${ex.transactions.toLocaleString()}. Calculating…`);
-            this.calculateBasic();
+            this.pushAssistant(`I found Volume ${this.formatDollars(ex.volume)}, Fees ${this.formatDollars(ex.fees)}, Transactions ${ex.transactions.toLocaleString()}.`);
+            this.stage.set('collect_mcc');
+            this.pushAssistant('Before I calculate, which category best fits your business?');
+            this.pushAssistant('Choose one: Propane, Insurance, Real Estate, or Other.');
           },
           error: () => this.error.set('Failed to extract totals from the PDF')
         });
