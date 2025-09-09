@@ -20,10 +20,11 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
           <div [ngClass]="m.role === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'" class="max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap">
             <div *ngIf="m.type === 'text'">{{ m.text }}</div>
             <div *ngIf="m.type === 'result'">
-              <div class="font-medium mb-2">Quick Estimate</div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div class="space-y-1">
-                  <div class="text-gray-500">You Entered</div>
+              <div class="font-medium mb-1">Quick Estimate</div>
+              <div class="text-xs text-gray-500 mb-2">Category: <span class="font-medium text-gray-700">{{ formatCategory(m.input?.mccCategory) }}</span></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 text-xs border border-gray-200 rounded-md overflow-hidden md:divide-x md:divide-gray-200">
+                <div class="p-3">
+                  <div class="font-medium mb-2">Before</div>
                   <div class="grid grid-cols-2 gap-x-4 gap-y-2">
                     <div class="text-gray-500">Basis</div>
                     <div class="font-semibold capitalize">{{ m.input?.basis }}</div>
@@ -37,11 +38,9 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
                     <div class="font-semibold">{{ formatPercent(m.result?.currentEffRate) }}</div>
                   </div>
                 </div>
-                <div class="space-y-1">
-                  <div class="text-gray-500">Our Estimate</div>
+                <div class="p-3">
+                  <div class="font-medium mb-2">After</div>
                   <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <div class="text-gray-500">Category</div>
-                    <div class="font-semibold">{{ formatCategory(m.input?.mccCategory) }}</div>
                     <div class="text-gray-500">Proposed ER</div>
                     <div class="font-semibold">{{ formatPercent(m.result?.proposedEffRate) }}</div>
                     <div class="text-gray-500">Estimated Savings</div>
