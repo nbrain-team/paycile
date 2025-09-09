@@ -92,10 +92,7 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
         </label>
       </div>
       <div class="mt-3 flex flex-wrap gap-2" *ngIf="stage() === 'collect_mcc'">
-        <button class="btn btn-secondary" (click)="setMccCategory('propane')">Propane</button>
-        <button class="btn btn-secondary" (click)="setMccCategory('insurance')">Insurance</button>
-        <button class="btn btn-secondary" (click)="setMccCategory('real_estate')">Real Estate</button>
-        <button class="btn btn-secondary" (click)="setMccCategory('other')">Other</button>
+        <button class="btn btn-secondary" *ngFor="let c of categories()" (click)="setMccCategory(c.name)">{{ c.name }}</button>
       </div>
 
       <!-- Input bar -->
@@ -124,13 +121,24 @@ export class ChatComponent {
   transactions = 0;
   fees = 0;
 
-  // MCC category for Quick Estimate
-  mccCategory: 'propane' | 'insurance' | 'real_estate' | 'other' | undefined = undefined;
+  // MCC category for Quick Estimate (dynamic from admin)
+  mccCategory: string | undefined = undefined;
+  categories = signal<Array<{ name: string }>>([{ name: 'Propane' }, { name: 'Insurance' }, { name: 'Real Estate' }, { name: 'Other' }]);
   perTxnFee = 0;
   monthlyFixedFees = 0;
   perCard: NonNullable<AdvancedCalcRequest['perCard']> = { visa: {}, mc: {}, discover: {}, amex: {} };
 
-  constructor(private feesService: FeesService) {}
+  constructor(private feesService: FeesService) {
+    // Load dynamic categories for agents to pick from
+    this.feesService.listCategories().subscribe({
+      next: (rows: any[]) => {
+        if (rows && rows.length) {
+          this.categories.set(rows.map(r => ({ name: r.name })));
+        }
+      },
+      error: () => {}
+    });
+  }
 
   // Auto-scroll to bottom when messages change
   autoScroll = effect(() => {
@@ -239,7 +247,7 @@ export class ChatComponent {
     });
   }
 
-  setMccCategory(cat: 'propane' | 'insurance' | 'real_estate' | 'other') {
+  setMccCategory(cat: string) {
     this.mccCategory = cat;
     this.pushUser(cat.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()));
     this.calculateBasic();

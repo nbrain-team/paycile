@@ -1,8 +1,10 @@
 import { Routes } from '@angular/router';
+import { AdminCategoriesComponent } from './pages/admin-categories/admin-categories.component';
 import { AuthGuard } from './guards/auth.guard';
 import { LayoutComponent } from './components/layout/layout.component';
 
 export const routes: Routes = [
+  { path: 'admin/categories', component: AdminCategoriesComponent },
   {
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)

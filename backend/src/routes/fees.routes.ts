@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import pdfParse from 'pdf-parse';
+import { query } from '../config/database';
 
 type ExtractResponse = {
   volume: number;
@@ -42,6 +43,26 @@ const upload = multer({
     else cb(new Error('Unsupported file type'));
   }
 });
+
+// Ensure category_rates table exists
+async function ensureCategoryRatesTable() {
+  await query(`
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE TABLE IF NOT EXISTS category_rates (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      name TEXT UNIQUE NOT NULL,
+      rate_percent NUMERIC(6,4) NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+}
+
+// Normalize category name
+function normalizeCategoryName(name: string): string {
+  return name.trim();
+}
 
 router.post('/upload', upload.single('file'), (req: Request, res: Response) => {
   const file = (req as any).file as { path: string; originalname: string; size: number } | undefined;
@@ -111,34 +132,44 @@ router.post('/calc', (req: Request, res: Response) => {
 
   const currentEffRate = (feesCents / volumeCents) * 100;
 
-  // Allow overriding proposed rate by MCC category when provided
-  const categoryRates: Record<string, number> = {
-    propane: 0.0180,
-    insurance: 0.0250,
-    real_estate: 0.0289,
-    other: 0.0220,
-  };
+  // Default rate if no category match (based on avg ticket)
+  let proposedRateDecimal: number | null = null;
+  (async () => {
+    if (mccCategory) {
+      try {
+        await ensureCategoryRatesTable();
+        const result = await query(
+          'SELECT rate_percent FROM category_rates WHERE lower(name) = lower($1) AND is_active = TRUE LIMIT 1',
+          [mccCategory]
+        );
+        if (result.rows.length > 0) {
+          const ratePercent = parseFloat(result.rows[0].rate_percent);
+          if (!Number.isNaN(ratePercent)) {
+            proposedRateDecimal = ratePercent / 100.0;
+          }
+        }
+      } catch (e) {
+        // Fall back silently
+      }
+    }
+    if (proposedRateDecimal === null) {
+      if (avgTicket >= 500) proposedRateDecimal = 0.0220;
+      else if (avgTicket >= 250) proposedRateDecimal = 0.0250;
+      else proposedRateDecimal = 0.0240;
+    }
 
-  let proposedRateDecimal: number;
-  if (mccCategory && categoryRates[mccCategory.toLowerCase()]) {
-    proposedRateDecimal = categoryRates[mccCategory.toLowerCase()];
-  } else {
-    if (avgTicket >= 500) proposedRateDecimal = 0.0220;
-    else if (avgTicket >= 250) proposedRateDecimal = 0.0250;
-    else proposedRateDecimal = 0.0240;
-  }
+    const proposedEffRate = proposedRateDecimal * 100;
+    const savingsDollars = (currentEffRate / 100 - proposedRateDecimal) * (volumeCents / 100);
+    const rateDelta = proposedEffRate - currentEffRate;
 
-  const proposedEffRate = proposedRateDecimal * 100;
-  const savingsDollars = (currentEffRate / 100 - proposedRateDecimal) * (volumeCents / 100);
-  const rateDelta = proposedEffRate - currentEffRate;
-
-  res.json({
-    avgTicket,
-    currentEffRate,
-    proposedEffRate,
-    savingsDollars,
-    rateDelta
-  });
+    res.json({
+      avgTicket,
+      currentEffRate,
+      proposedEffRate,
+      savingsDollars,
+      rateDelta
+    });
+  })();
 });
 
 router.post('/calc-advanced', (req: Request, res: Response) => {
@@ -613,5 +644,101 @@ function extractTotalsFromText(rawText: string): ExtractResponse {
 }
 
 export { router as feesRouter };
+
+// Admin endpoints for category rates
+router.get('/categories', async (_req: Request, res: Response) => {
+  try {
+    await ensureCategoryRatesTable();
+    const r = await query('SELECT id, name, rate_percent::float, is_active, created_at, updated_at FROM category_rates ORDER BY name ASC');
+    res.json({ success: true, data: r.rows });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e?.message || 'Failed to fetch categories' });
+  }
+});
+
+router.post('/categories', async (req: Request, res: Response) => {
+  try {
+    const { name, ratePercent, isActive } = req.body as { name?: string; ratePercent?: number; isActive?: boolean };
+    if (!name || typeof ratePercent !== 'number') {
+      return res.status(400).json({ success: false, error: 'name and ratePercent are required' });
+    }
+    await ensureCategoryRatesTable();
+    const n = normalizeCategoryName(name);
+    const r = await query(
+      `INSERT INTO category_rates (name, rate_percent, is_active)
+       VALUES ($1, $2, COALESCE($3, TRUE))
+       ON CONFLICT (name) DO UPDATE SET rate_percent = EXCLUDED.rate_percent, is_active = COALESCE($3, category_rates.is_active), updated_at = NOW()
+       RETURNING id, name, rate_percent::float, is_active, created_at, updated_at`,
+      [n, ratePercent, isActive]
+    );
+    res.json({ success: true, data: r.rows[0] });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e?.message || 'Failed to save category' });
+  }
+});
+
+router.put('/categories/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, ratePercent, isActive } = req.body as { name?: string; ratePercent?: number; isActive?: boolean };
+    await ensureCategoryRatesTable();
+    const r = await query(
+      `UPDATE category_rates SET
+         name = COALESCE($2, name),
+         rate_percent = COALESCE($3, rate_percent),
+         is_active = COALESCE($4, is_active),
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, name, rate_percent::float, is_active, created_at, updated_at`,
+      [id, name ? normalizeCategoryName(name) : null, typeof ratePercent === 'number' ? ratePercent : null, typeof isActive === 'boolean' ? isActive : null]
+    );
+    if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, data: r.rows[0] });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e?.message || 'Failed to update category' });
+  }
+});
+
+router.delete('/categories/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await ensureCategoryRatesTable();
+    const r = await query('DELETE FROM category_rates WHERE id = $1', [id]);
+    if (r.rowCount === 0) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e?.message || 'Failed to delete category' });
+  }
+});
+
+// CSV upload: two columns: name, ratePercent
+const csvUpload = multer({ storage });
+router.post('/categories/upload-csv', csvUpload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const file = (req as any).file as { path: string } | undefined;
+    if (!file) return res.status(400).json({ success: false, error: 'No file' });
+    await ensureCategoryRatesTable();
+    const raw = fs.readFileSync(file.path, 'utf8');
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    let upserted = 0;
+    for (const line of lines) {
+      const [nameCol, rateCol] = line.split(',').map(s => s?.trim());
+      if (!nameCol || !rateCol) continue;
+      const rate = parseFloat(rateCol.replace(/%/g, ''));
+      if (Number.isNaN(rate)) continue;
+      const n = normalizeCategoryName(nameCol);
+      await query(
+        `INSERT INTO category_rates (name, rate_percent)
+         VALUES ($1, $2)
+         ON CONFLICT (name) DO UPDATE SET rate_percent = EXCLUDED.rate_percent, updated_at = NOW()`,
+        [n, rate]
+      );
+      upserted += 1;
+    }
+    res.json({ success: true, data: { upserted } });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e?.message || 'Failed to process CSV' });
+  }
+});
 
 

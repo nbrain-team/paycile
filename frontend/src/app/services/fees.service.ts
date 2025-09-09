@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface ExtractResponse {
@@ -66,7 +67,7 @@ export class FeesService {
     return this.http.post<ExtractResponse>(`${this.baseUrl}/extract`, { fileId });
   }
 
-  calculate(volume: number, transactions: number, fees: number, mccCategory?: 'propane' | 'insurance' | 'real_estate' | 'other'): Observable<CalcResponse> {
+  calculate(volume: number, transactions: number, fees: number, mccCategory?: string): Observable<CalcResponse> {
     const payload: any = { volume, transactions, fees };
     if (mccCategory) payload.mccCategory = mccCategory;
     return this.http.post<CalcResponse>(`${this.baseUrl}/calc`, payload);
@@ -74,6 +75,28 @@ export class FeesService {
 
   calculateAdvanced(payload: AdvancedCalcRequest): Observable<AdvancedCalcResponse> {
     return this.http.post<AdvancedCalcResponse>(`${this.baseUrl}/calc-advanced`, payload);
+  }
+
+  // Category rates (admin)
+  listCategories(): Observable<Array<{ id: string; name: string; rate_percent: number; is_active: boolean }>> {
+    return this.http.get<{ success: boolean; data: any[] }>(`${this.baseUrl}/categories`).pipe(map(r => r.data));
+  }
+
+  saveCategory(payload: { name: string; ratePercent: number; isActive?: boolean; id?: string }): Observable<any> {
+    if (payload.id) {
+      return this.http.put(`${this.baseUrl}/categories/${payload.id}`, payload);
+    }
+    return this.http.post(`${this.baseUrl}/categories`, payload);
+  }
+
+  deleteCategory(id: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/categories/${id}`);
+  }
+
+  uploadCategoriesCsv(file: File): Observable<{ upserted: number }> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<{ success: boolean; data: { upserted: number } }>(`${this.baseUrl}/categories/upload-csv`, form).pipe(map(r => r.data));
   }
 }
 
