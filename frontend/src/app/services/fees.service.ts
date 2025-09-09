@@ -66,8 +66,10 @@ export class FeesService {
     return this.http.post<ExtractResponse>(`${this.baseUrl}/extract`, { fileId });
   }
 
-  calculate(volume: number, transactions: number, fees: number): Observable<CalcResponse> {
-    return this.http.post<CalcResponse>(`${this.baseUrl}/calc`, { volume, transactions, fees });
+  calculate(volume: number, transactions: number, fees: number, mccCategory?: 'propane' | 'insurance' | 'real_estate' | 'other'): Observable<CalcResponse> {
+    const payload: any = { volume, transactions, fees };
+    if (mccCategory) payload.mccCategory = mccCategory;
+    return this.http.post<CalcResponse>(`${this.baseUrl}/calc`, payload);
   }
 
   calculateAdvanced(payload: AdvancedCalcRequest): Observable<AdvancedCalcResponse> {

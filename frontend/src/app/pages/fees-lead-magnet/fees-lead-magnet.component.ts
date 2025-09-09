@@ -93,13 +93,12 @@ import { FeesService, CalcResponse, ExtractResponse, AdvancedCalcRequest, Advanc
                 <input class="input w-full" type="number" min="1" [(ngModel)]="advForm.totalTransactions" />
               </div>
               <div>
-                <label class="label">MCC</label>
-                <select class="input w-full" [(ngModel)]="advForm.mcc">
-                  <option value="5983">Propane (5983)</option>
-                  <option value="4900">Utilities (4900)</option>
-                  <option value="5960">Insurance (5960)</option>
-                  <option value="6300">Insurance (6300)</option>
-                  <option value="6513">Real Estate (6513)</option>
+                <label class="label">Category</label>
+                <select class="input w-full" [(ngModel)]="advCategory">
+                  <option value="propane">Propane</option>
+                  <option value="insurance">Insurance</option>
+                  <option value="real_estate">Real Estate</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
               <div>
@@ -246,7 +245,7 @@ export class FeesLeadMagnetComponent {
     totalVolume: 0,
     totalTransactions: 0,
     totalFees: 0,
-    mcc: '5983',
+    mcc: undefined,
     monthlyFixedFees: 0,
     perTxnFee: 0,
     perCard: {
@@ -256,6 +255,8 @@ export class FeesLeadMagnetComponent {
       amex: { volume: 0, transactions: 0 },
     }
   };
+
+  advCategory: 'propane' | 'insurance' | 'real_estate' | 'other' = 'other';
 
   constructor(private fees: FeesService) {}
 
@@ -315,6 +316,11 @@ export class FeesLeadMagnetComponent {
       return;
     }
     this.error.set(null);
+    // For quick estimate comparison in the side card based on category selection
+    this.fees.calculate(p.totalVolume, p.totalTransactions, p.totalFees, this.advCategory).subscribe({
+      next: r => this.results.set(r),
+      error: (e) => this.error.set(e?.error?.error || 'Calculation failed')
+    });
     this.fees.calculateAdvanced(p).subscribe({
       next: r => this.advResults.set(r),
       error: (e) => this.error.set(e?.error?.error || 'Advanced calculation failed')
@@ -323,7 +329,7 @@ export class FeesLeadMagnetComponent {
 
   private runCalculation(volume: number, transactions: number, fees: number) {
     console.log('[fees] calculate input', { volume, transactions, fees });
-    this.fees.calculate(volume, transactions, fees).subscribe({
+    this.fees.calculate(volume, transactions, fees, undefined).subscribe({
       next: r => this.results.set(r),
       error: (e) => this.error.set(e?.error?.error || 'Calculation failed')
     });

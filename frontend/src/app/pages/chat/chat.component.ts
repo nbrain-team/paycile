@@ -74,16 +74,11 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
           Upload Statement (PDF)
         </label>
       </div>
-      <div class="mt-3 flex flex-wrap gap-2" *ngIf="stage() === 'ask_advanced'">
-        <button class="btn btn-primary" (click)="beginAdvanced()">Yes, refine</button>
-        <button class="btn btn-secondary" (click)="endSession()">No, I’m done</button>
-      </div>
       <div class="mt-3 flex flex-wrap gap-2" *ngIf="stage() === 'collect_mcc'">
-        <button class="btn btn-secondary" (click)="setMCC('5983')">Propane 5983</button>
-        <button class="btn btn-secondary" (click)="setMCC('4900')">Utilities 4900</button>
-        <button class="btn btn-secondary" (click)="setMCC('5960')">Insurance 5960</button>
-        <button class="btn btn-secondary" (click)="setMCC('6300')">Insurance 6300</button>
-        <button class="btn btn-secondary" (click)="setMCC('6513')">Real Estate 6513</button>
+        <button class="btn btn-secondary" (click)="setMccCategory('propane')">Propane</button>
+        <button class="btn btn-secondary" (click)="setMccCategory('insurance')">Insurance</button>
+        <button class="btn btn-secondary" (click)="setMccCategory('real_estate')">Real Estate</button>
+        <button class="btn btn-secondary" (click)="setMccCategory('other')">Other</button>
       </div>
 
       <!-- Input bar -->
@@ -100,7 +95,7 @@ export class ChatComponent {
   messages = signal<Array<{ role: 'user' | 'assistant'; type: 'text' | 'result' | 'advanced'; text?: string; result?: CalcResponse; adv?: AdvancedCalcResponse }>>([
     { role: 'assistant', type: 'text', text: 'Hi! Let’s estimate your credit card processing savings. Is your total volume and fees monthly or annual? You can also upload a statement PDF.' }
   ]);
-  stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'basic_done' | 'ask_advanced' | 'collect_mcc' | 'collect_per_txn' | 'collect_fixed' | 'collect_card_mix' | 'advanced_done'>('collect_basis');
+  stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'collect_mcc' | 'basic_done' | 'advanced_done'>('collect_basis');
   input = '';
   error = signal<string | null>(null);
 
@@ -110,8 +105,8 @@ export class ChatComponent {
   transactions = 0;
   fees = 0;
 
-  // Advanced inputs
-  mcc: string | undefined = undefined;
+  // MCC category for Quick Estimate
+  mccCategory: 'propane' | 'insurance' | 'real_estate' | 'other' | undefined = undefined;
   perTxnFee = 0;
   monthlyFixedFees = 0;
   perCard: NonNullable<AdvancedCalcRequest['perCard']> = { visa: {}, mc: {}, discover: {}, amex: {} };
@@ -123,9 +118,7 @@ export class ChatComponent {
       case 'collect_volume': return 'Enter total volume (e.g., 250000)';
       case 'collect_transactions': return 'Enter total transactions (e.g., 1083)';
       case 'collect_fees': return 'Enter total fees (e.g., 6500)';
-      case 'collect_per_txn': return 'Per-transaction fee in dollars (or type skip)';
-      case 'collect_fixed': return 'Monthly fixed fees in dollars (or type skip)';
-      case 'collect_card_mix': return 'Optional: Visa/MC/Disc/Amex volumes (comma-separated), or type skip';
+      // Advanced-only placeholders removed from primary flow
       default: return 'Type here…';
     }
   }
@@ -136,6 +129,7 @@ export class ChatComponent {
   chooseBasis(b: 'monthly' | 'annual') {
     this.basis = b;
     this.stage.set('collect_volume');
+    this.pushUser(b === 'monthly' ? 'Monthly' : 'Annual');
     this.pushAssistant(`Great. What is your ${b} total card volume in dollars?`);
   }
 
@@ -144,6 +138,7 @@ export class ChatComponent {
     const file = input.files && input.files[0];
     if (!file) return;
     this.error.set(null);
+    this.pushUser(`Uploaded ${file.name}`);
     this.pushAssistant('Uploading and extracting totals…');
     this.feesService.uploadStatement(file).subscribe({
       next: r => {
@@ -190,43 +185,13 @@ export class ChatComponent {
         const f = this.toNumber(text);
         if (f <= 0) { this.error.set('Please enter a valid fee amount'); return; }
         this.fees = f;
-        this.calculateBasic();
+        // Before calculating, collect MCC category
+        this.stage.set('collect_mcc');
+        this.pushAssistant('Before I calculate, which category best fits your business?');
+        this.pushAssistant('Choose one: Propane, Insurance, Real Estate, or Other.');
         break;
       }
-      case 'collect_per_txn': {
-        if (text.toLowerCase() === 'skip') { this.perTxnFee = 0; this.stage.set('collect_fixed'); this.pushAssistant('Monthly fixed fees (if any)? Type skip if none.'); break; }
-        const fee = this.toNumber(text);
-        if (fee < 0) { this.error.set('Please enter a non-negative amount or type skip'); return; }
-        this.perTxnFee = fee;
-        this.stage.set('collect_fixed');
-        this.pushAssistant('Monthly fixed fees (if any)? Type skip if none.');
-        break;
-      }
-      case 'collect_fixed': {
-        if (text.toLowerCase() === 'skip') { this.monthlyFixedFees = 0; this.stage.set('collect_card_mix'); this.pushAssistant('Optionally provide Visa/MC/Discover/Amex volumes (comma-separated), or type skip.'); break; }
-        const fee = this.toNumber(text);
-        if (fee < 0) { this.error.set('Please enter a non-negative amount or type skip'); return; }
-        this.monthlyFixedFees = fee;
-        this.stage.set('collect_card_mix');
-        this.pushAssistant('Optionally provide Visa/MC/Discover/Amex volumes (comma-separated), or type skip.');
-        break;
-      }
-      case 'collect_card_mix': {
-        if (text.toLowerCase() === 'skip') { this.calculateAdvanced(); break; }
-        const parts = text.split(',').map(s => this.toNumber(s));
-        if (parts.length !== 4 || parts.some(x => Number.isNaN(x))) {
-          this.error.set('Please provide four dollar amounts separated by commas, or type skip');
-          return;
-        }
-        this.perCard = {
-          visa: { volume: parts[0] },
-          mc: { volume: parts[1] },
-          discover: { volume: parts[2] },
-          amex: { volume: parts[3] },
-        };
-        this.calculateAdvanced();
-        break;
-      }
+      // Advanced-only steps removed from primary flow
       default:
         // For other stages we rely on buttons/quick replies
         break;
@@ -234,25 +199,20 @@ export class ChatComponent {
   }
 
   calculateBasic() {
-    this.feesService.calculate(this.volume, this.transactions, this.fees).subscribe({
+    this.feesService.calculate(this.volume, this.transactions, this.fees, this.mccCategory).subscribe({
       next: (r: CalcResponse) => {
         this.messages.update((m) => [...m, { role: 'assistant', type: 'result', result: r }]);
-        this.stage.set('ask_advanced');
-        this.pushAssistant('Would you like to refine this with MCC, per-transaction, fixed fees, and card mix?');
+        this.stage.set('advanced_done');
+        this.pushAssistant('If you give us 10 minutes of your time, we can narrow this down even further. Want to schedule a call here?');
       },
       error: () => this.error.set('Calculation failed')
     });
   }
 
-  beginAdvanced() {
-    this.stage.set('collect_mcc');
-    this.pushAssistant('Pick your MCC or type it in (e.g., 5983, 4900, 5960, 6300, 6513).');
-  }
-
-  setMCC(code: string) {
-    this.mcc = code;
-    this.stage.set('collect_per_txn');
-    this.pushAssistant('Do you know your per-transaction fee? Enter dollars, or type skip.');
+  setMccCategory(cat: 'propane' | 'insurance' | 'real_estate' | 'other') {
+    this.mccCategory = cat;
+    this.pushUser(cat.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()));
+    this.calculateBasic();
   }
 
   endSession() {
@@ -266,7 +226,7 @@ export class ChatComponent {
       totalVolume: this.volume,
       totalTransactions: this.transactions,
       totalFees: this.fees,
-      mcc: this.mcc,
+      mcc: undefined,
       monthlyFixedFees: this.monthlyFixedFees,
       perTxnFee: this.perTxnFee,
       perCard: this.perCard,
@@ -276,7 +236,7 @@ export class ChatComponent {
       next: (adv: AdvancedCalcResponse) => {
         this.messages.update((m) => [...m, { role: 'assistant', type: 'advanced', adv }]);
         this.stage.set('advanced_done');
-        this.pushAssistant('Would you like to see how our 90% fee recovery program applies to your case or book a quick call?');
+        this.pushAssistant('If you give us 10 minutes of your time, we can narrow this down even further. Want to schedule a call here?');
       },
       error: () => this.error.set('Advanced calculation failed')
     });

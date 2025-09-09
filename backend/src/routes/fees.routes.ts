@@ -90,10 +90,11 @@ router.post('/extract', async (req: Request, res: Response) => {
 });
 
 router.post('/calc', (req: Request, res: Response) => {
-  const { volume, transactions, fees } = req.body as {
+  const { volume, transactions, fees, mccCategory } = req.body as {
     volume?: number;
     transactions?: number;
     fees?: number;
+    mccCategory?: string;
   };
 
   if (!volume || !transactions || !fees) {
@@ -110,10 +111,22 @@ router.post('/calc', (req: Request, res: Response) => {
 
   const currentEffRate = (feesCents / volumeCents) * 100;
 
+  // Allow overriding proposed rate by MCC category when provided
+  const categoryRates: Record<string, number> = {
+    propane: 0.0180,
+    insurance: 0.0250,
+    real_estate: 0.0289,
+    other: 0.0220,
+  };
+
   let proposedRateDecimal: number;
-  if (avgTicket >= 500) proposedRateDecimal = 0.0220;
-  else if (avgTicket >= 250) proposedRateDecimal = 0.0250;
-  else proposedRateDecimal = 0.0240;
+  if (mccCategory && categoryRates[mccCategory.toLowerCase()]) {
+    proposedRateDecimal = categoryRates[mccCategory.toLowerCase()];
+  } else {
+    if (avgTicket >= 500) proposedRateDecimal = 0.0220;
+    else if (avgTicket >= 250) proposedRateDecimal = 0.0250;
+    else proposedRateDecimal = 0.0240;
+  }
 
   const proposedEffRate = proposedRateDecimal * 100;
   const savingsDollars = (currentEffRate / 100 - proposedRateDecimal) * (volumeCents / 100);
