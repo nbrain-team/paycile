@@ -91,9 +91,7 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
           Upload Statement (PDF)
         </label>
       </div>
-      <div class="mt-3 flex flex-wrap gap-2" *ngIf="stage() === 'collect_mcc'">
-        <button class="btn btn-secondary" *ngFor="let c of categories()" (click)="setMccCategory(c.name)">{{ c.name }}</button>
-      </div>
+      
 
       <!-- Input bar -->
       <div class="mt-4 flex items-center gap-2">
@@ -111,7 +109,7 @@ export class ChatComponent {
   messages = signal<Array<{ role: 'user' | 'assistant'; type: 'text' | 'result' | 'advanced'; text?: string; result?: CalcResponse; adv?: AdvancedCalcResponse; input?: { basis: string; volume: number; transactions: number; fees: number; mccCategory?: string } }>>([
     { role: 'assistant', type: 'text', text: 'Hi! Let’s estimate your credit card processing savings. Is your total volume and fees monthly or annual? You can also upload a statement PDF.' }
   ]);
-  stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'collect_mcc' | 'basic_done' | 'advanced_done'>('collect_basis');
+  stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'basic_done' | 'advanced_done'>('collect_basis');
   input = '';
   error = signal<string | null>(null);
 
@@ -121,24 +119,13 @@ export class ChatComponent {
   transactions = 0;
   fees = 0;
 
-  // MCC category for Quick Estimate (dynamic from admin)
+  // MCC category no longer required for quick estimate flow
   mccCategory: string | undefined = undefined;
-  categories = signal<Array<{ name: string }>>([{ name: 'Propane' }, { name: 'Insurance' }, { name: 'Real Estate' }, { name: 'Other' }]);
   perTxnFee = 0;
   monthlyFixedFees = 0;
   perCard: NonNullable<AdvancedCalcRequest['perCard']> = { visa: {}, mc: {}, discover: {}, amex: {} };
 
-  constructor(private feesService: FeesService) {
-    // Load dynamic categories for agents to pick from
-    this.feesService.listCategories().subscribe({
-      next: (rows: any[]) => {
-        if (rows && rows.length) {
-          this.categories.set(rows.map(r => ({ name: r.name })));
-        }
-      },
-      error: () => {}
-    });
-  }
+  constructor(private feesService: FeesService) {}
 
   // Auto-scroll to bottom when messages change
   autoScroll = effect(() => {
@@ -183,10 +170,8 @@ export class ChatComponent {
             this.volume = ex.volume;
             this.transactions = ex.transactions;
             this.fees = ex.fees;
-            this.pushAssistant(`I found Volume ${this.formatDollars(ex.volume)}, Fees ${this.formatDollars(ex.fees)}, Transactions ${ex.transactions.toLocaleString()}.`);
-            this.stage.set('collect_mcc');
-            this.pushAssistant('Before I calculate, which category best fits your business?');
-            this.pushAssistant('Choose one: Propane, Insurance, Real Estate, or Other.');
+            this.pushAssistant(`I found Volume ${this.formatDollars(ex.volume)}, Fees ${this.formatDollars(ex.fees)}, Transactions ${ex.transactions.toLocaleString()}. Calculating…`);
+            this.calculateBasic();
           },
           error: () => this.error.set('Failed to extract totals from the PDF')
         });
@@ -223,10 +208,7 @@ export class ChatComponent {
         const f = this.toNumber(text);
         if (f <= 0) { this.error.set('Please enter a valid fee amount'); return; }
         this.fees = f;
-        // Before calculating, collect MCC category
-        this.stage.set('collect_mcc');
-        this.pushAssistant('Before I calculate, which category best fits your business?');
-        this.pushAssistant('Choose one: Propane, Insurance, Real Estate, or Other.');
+        this.calculateBasic();
         break;
       }
       // Advanced-only steps removed from primary flow
