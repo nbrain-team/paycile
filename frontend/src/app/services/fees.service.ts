@@ -57,6 +57,7 @@ export class FeesService {
 
   constructor(private http: HttpClient) {}
 
+  // Upload/extract kept for other pages (e.g., Fees Lead Magnet)
   uploadStatement(file: File): Observable<{ fileId: string; filename: string; size: number }> {
     const form = new FormData();
     form.append('file', file);

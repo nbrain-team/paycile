@@ -86,10 +86,6 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
       <div class="mt-3 flex flex-wrap gap-2" *ngIf="stage() === 'collect_basis'">
         <button class="btn btn-secondary" (click)="chooseBasis('monthly')">Monthly</button>
         <button class="btn btn-secondary" (click)="chooseBasis('annual')">Annual</button>
-        <label class="btn btn-outline relative cursor-pointer">
-          <input type="file" accept="application/pdf" (change)="onFileSelected($event)" class="absolute inset-0 opacity-0 cursor-pointer" />
-          Upload Statement (PDF)
-        </label>
       </div>
       
 
@@ -107,7 +103,7 @@ export class ChatComponent {
   @ViewChild('scrollContainer') scrollContainer?: ElementRef<HTMLDivElement>;
 
   messages = signal<Array<{ role: 'user' | 'assistant'; type: 'text' | 'result' | 'advanced'; text?: string; result?: CalcResponse; adv?: AdvancedCalcResponse; input?: { basis: string; volume: number; transactions: number; fees: number; mccCategory?: string } }>>([
-    { role: 'assistant', type: 'text', text: 'Hi! Let’s estimate your credit card processing savings. Is your total volume and fees monthly or annual? You can also upload a statement PDF.' }
+    { role: 'assistant', type: 'text', text: 'Hi! Let’s estimate your credit card processing savings. Is your total volume and fees monthly or annual?' }
   ]);
   stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'basic_done' | 'advanced_done'>('collect_basis');
   input = '';
@@ -156,29 +152,7 @@ export class ChatComponent {
     this.pushAssistant(`Great. What is your ${b} total card volume in dollars?`);
   }
 
-  onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files && input.files[0];
-    if (!file) return;
-    this.error.set(null);
-    this.pushUser(`Uploaded ${file.name}`);
-    this.pushAssistant('Uploading and extracting totals…');
-    this.feesService.uploadStatement(file).subscribe({
-      next: r => {
-        this.feesService.extract(r.fileId).subscribe({
-          next: (ex: ExtractResponse) => {
-            this.volume = ex.volume;
-            this.transactions = ex.transactions;
-            this.fees = ex.fees;
-            this.pushAssistant(`I found Volume ${this.formatDollars(ex.volume)}, Fees ${this.formatDollars(ex.fees)}, Transactions ${ex.transactions.toLocaleString()}. Calculating…`);
-            this.calculateBasic();
-          },
-          error: () => this.error.set('Failed to extract totals from the PDF')
-        });
-      },
-      error: () => this.error.set('Upload failed')
-    });
-  }
+  // PDF upload removed
 
   send() {
     const text = this.input.trim();
