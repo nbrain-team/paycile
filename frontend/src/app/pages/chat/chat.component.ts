@@ -17,42 +17,42 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
       <!-- Conversation -->
       <div #scrollContainer class="card h-[60vh] overflow-y-auto p-4 space-y-4">
         <div *ngFor="let m of messages()" class="flex" [class.justify-end]="m.role === 'user'">
-          <div [ngClass]="m.role === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'" class="max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap">
+          <div [ngClass]="m.role === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900'" class="max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap" [class.max-w-full]="m.type === 'result' || m.type === 'advanced'" [class.w-full]="m.type === 'result' || m.type === 'advanced'" [class.text-base]="m.type === 'result' || m.type === 'advanced'">
             <div *ngIf="m.type === 'text'">{{ m.text }}</div>
             <div *ngIf="m.type === 'result'">
               <div class="font-medium mb-1">Quick Estimate</div>
-              <div class="text-xs text-gray-500 mb-2">
+              <div class="text-sm text-gray-500 mb-3">
                 Category: <span class="font-medium text-gray-700">{{ formatCategory(m.input?.mccCategory) }}</span>
                 · Basis: <span class="font-medium text-gray-700">Yearly</span>
               </div>
-              <div class="text-xs border border-gray-200 rounded-md overflow-hidden">
-                <div class="grid grid-cols-4 bg-gray-50 text-gray-600 px-3 py-2">
-                  <div></div>
-                  <div class="text-center font-medium">Current</div>
-                  <div class="text-center font-medium">Proposed</div>
-                  <div class="text-center font-medium">% +/-</div>
-                </div>
-                <div class="divide-y divide-gray-200">
+              <div class="overflow-x-auto w-full">
+                <div class="text-base border border-gray-200 rounded-lg overflow-hidden w-full min-w-[880px]">
+                  <div class="grid grid-cols-4 bg-gray-50 text-gray-700 font-medium border-b border-gray-200 divide-x divide-gray-200">
+                    <div class="px-6 py-4">&nbsp;</div>
+                    <div class="px-6 py-4 text-center">Current</div>
+                    <div class="px-6 py-4 text-center">Proposed</div>
+                    <div class="px-6 py-4 text-center">% +/-</div>
+                  </div>
                   <!-- Volume row (yearly) -->
-                  <div class="grid grid-cols-4 items-center px-3 py-2">
-                    <div class="text-gray-500">Volume</div>
-                    <div class="text-center font-semibold">{{ formatDollars(yearlyVolume(m.input)) }}</div>
-                    <div class="text-center font-semibold">{{ formatDollars(yearlyVolume(m.input)) }}</div>
-                    <div class="text-center font-semibold">{{ formatPercent(0) }}</div>
+                  <div class="grid grid-cols-4 items-center border-b border-gray-200 divide-x divide-gray-200">
+                    <div class="px-6 py-4 text-gray-600">Volume</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatDollars(yearlyVolume(m.input)) }}</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatDollars(yearlyVolume(m.input)) }}</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatPercent(0) }}</div>
                   </div>
                   <!-- Current ER row -->
-                  <div class="grid grid-cols-4 items-center px-3 py-2">
-                    <div class="text-gray-500">Current ER</div>
-                    <div class="text-center font-semibold">{{ formatPercent(m.result?.currentEffRate) }}</div>
-                    <div class="text-center font-semibold">{{ formatPercent(m.result?.proposedEffRate) }}</div>
-                    <div class="text-center font-semibold">{{ formatPercent(m.result?.rateDelta) }}</div>
+                  <div class="grid grid-cols-4 items-center border-b border-gray-200 divide-x divide-gray-200">
+                    <div class="px-6 py-4 text-gray-600">Current ER</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatPercent(m.result?.currentEffRate) }}</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatPercent(m.result?.proposedEffRate) }}</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatPercent(m.result?.rateDelta) }}</div>
                   </div>
                   <!-- Fees row (yearly) -->
-                  <div class="grid grid-cols-4 items-center px-3 py-2">
-                    <div class="text-gray-500">Fees</div>
-                    <div class="text-center font-semibold">{{ formatDollars(yearlyFees(m.input)) }}</div>
-                    <div class="text-center font-semibold">{{ formatDollars(proposedFeesYearly(m.result, m.input)) }}</div>
-                    <div class="text-center font-semibold">{{ formatPercent(percentChange(yearlyFees(m.input), proposedFeesYearly(m.result, m.input))) }}</div>
+                  <div class="grid grid-cols-4 items-center divide-x divide-gray-200">
+                    <div class="px-6 py-4 text-gray-600">Fees</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatDollars(yearlyFees(m.input)) }}</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatDollars(proposedFeesYearly(m.result, m.input)) }}</div>
+                    <div class="px-6 py-4 text-center font-semibold">{{ formatPercent(percentChange(yearlyFees(m.input), proposedFeesYearly(m.result, m.input))) }}</div>
                   </div>
                 </div>
               </div>
