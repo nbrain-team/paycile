@@ -130,3 +130,4 @@ export class AdminCategoriesComponent {
     input.value = '';
   }
 }
+
