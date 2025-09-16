@@ -87,6 +87,15 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
         <button class="btn btn-secondary" (click)="chooseBasis('monthly')">Monthly</button>
         <button class="btn btn-secondary" (click)="chooseBasis('annual')">Annual</button>
       </div>
+      <div class="mt-3 flex flex-wrap gap-2" *ngIf="stage() === 'collect_category'">
+        <button
+          class="btn btn-secondary"
+          *ngFor="let c of activeCategories()"
+          (click)="setMccCategory(c.name)"
+        >
+          {{ c.name }}
+        </button>
+      </div>
       
 
       <!-- Input bar -->
@@ -105,7 +114,7 @@ export class ChatComponent {
   messages = signal<Array<{ role: 'user' | 'assistant'; type: 'text' | 'result' | 'advanced'; text?: string; result?: CalcResponse; adv?: AdvancedCalcResponse; input?: { basis: string; volume: number; transactions: number; fees: number; mccCategory?: string } }>>([
     { role: 'assistant', type: 'text', text: 'Hi! Let’s estimate your credit card processing savings. Is your total volume and fees monthly or annual?' }
   ]);
-  stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'basic_done' | 'advanced_done'>('collect_basis');
+  stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'collect_category' | 'basic_done' | 'advanced_done'>('collect_basis');
   input = '';
   error = signal<string | null>(null);
 
@@ -115,13 +124,22 @@ export class ChatComponent {
   transactions = 0;
   fees = 0;
 
-  // MCC category no longer required for quick estimate flow
+  // MCC category used to determine proposed ER via admin-configured categories
   mccCategory: string | undefined = undefined;
+  categories = signal<Array<{ id: string; name: string; rate_percent: number; is_active: boolean }>>([]);
   perTxnFee = 0;
   monthlyFixedFees = 0;
   perCard: NonNullable<AdvancedCalcRequest['perCard']> = { visa: {}, mc: {}, discover: {}, amex: {} };
 
-  constructor(private feesService: FeesService) {}
+  constructor(private feesService: FeesService) {
+    // Preload categories so they're available when needed
+    this.feesService.listCategories().subscribe({
+      next: (rows: any[]) => this.categories.set(rows || []),
+      error: () => {
+        // Silent fail; category step will still accept manual input
+      }
+    });
+  }
 
   // Auto-scroll to bottom when messages change
   autoScroll = effect(() => {
@@ -137,6 +155,7 @@ export class ChatComponent {
       case 'collect_volume': return 'Enter total volume (e.g., 250000)';
       case 'collect_transactions': return 'Enter total transactions (e.g., 1083)';
       case 'collect_fees': return 'Enter total fees (e.g., 6500)';
+      case 'collect_category': return 'Choose a category above or type it (e.g., Insurance)';
       // Advanced-only placeholders removed from primary flow
       default: return 'Type here…';
     }
@@ -182,7 +201,16 @@ export class ChatComponent {
         const f = this.toNumber(text);
         if (f <= 0) { this.error.set('Please enter a valid fee amount'); return; }
         this.fees = f;
-        this.calculateBasic();
+        // Ask for category next to refine proposed ER
+        this.stage.set('collect_category');
+        this.pushAssistant('Got it. What type of business are you? Choose a category for a more accurate proposed effective rate.');
+        break;
+      }
+      case 'collect_category': {
+        // Allow manual typing of category as fallback to buttons
+        const cat = text.trim();
+        if (!cat) { this.error.set('Please enter a valid category'); return; }
+        this.setMccCategory(cat);
         break;
       }
       // Advanced-only steps removed from primary flow
@@ -274,5 +302,9 @@ export class ChatComponent {
   percentChange(current: number, proposed: number): number {
     if (!current) return 0;
     return ((proposed - current) / current) * 100;
+  }
+
+  activeCategories() {
+    return (this.categories() || []).filter(c => c.is_active);
   }
 }

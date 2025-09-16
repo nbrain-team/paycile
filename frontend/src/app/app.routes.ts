@@ -1,10 +1,8 @@
 import { Routes } from '@angular/router';
-import { AdminCategoriesComponent } from './pages/admin-categories/admin-categories.component';
 import { AuthGuard } from './guards/auth.guard';
 import { LayoutComponent } from './components/layout/layout.component';
 
 export const routes: Routes = [
-  { path: 'admin/categories', component: AdminCategoriesComponent },
   {
     path: 'savings-chat',
     loadComponent: () => import('./pages/public-savings-chat/public-savings-chat.component').then(m => m.PublicSavingsChatComponent)
@@ -20,6 +18,7 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'dashboard', redirectTo: '', pathMatch: 'full' },
+      { path: 'admin/categories', loadComponent: () => import('./pages/admin-categories/admin-categories.component').then(m => m.AdminCategoriesComponent) },
       { path: 'policies', loadComponent: () => import('./pages/policies/policies.component').then(m => m.PoliciesComponent) },
       { path: 'policies/:id', loadComponent: () => import('./pages/policy-detail/policy-detail.component').then(m => m.PolicyDetailComponent) },
       { path: 'invoices', loadComponent: () => import('./pages/invoices/invoices.component').then(m => m.InvoicesComponent) },
