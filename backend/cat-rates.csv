@@ -1,0 +1,9 @@
+# name,ratePercent,isActive
+insurance,2.10,true
+propane,2.10,true
+4900,2.10,true
+5960,2.10,true
+6300,2.10,true
+real_estate,2.10,true
+6513,2.10,true
+# add more categories here; rate in percent
