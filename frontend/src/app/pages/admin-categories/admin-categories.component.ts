@@ -14,7 +14,7 @@ import { FeesService } from '../../services/fees.service';
           <h1 class="text-2xl font-semibold text-gray-900">Category Rates</h1>
           <p class="text-gray-600">Manage categories used for Proposed ER in estimates.</p>
         </div>
-        <label class="btn btn-outline relative cursor-pointer">
+        <label class="btn btn-secondary relative cursor-pointer">
           <input type="file" accept=".csv" (change)="onCsv($event)" class="absolute inset-0 opacity-0 cursor-pointer" />
           Upload CSV
         </label>
@@ -61,7 +61,7 @@ import { FeesService } from '../../services/fees.service';
               <td class="px-3 py-2">{{ c.is_active ? 'Yes' : 'No' }}</td>
               <td class="px-3 py-2 text-right space-x-2">
                 <button class="btn btn-secondary" (click)="edit(c)">Edit</button>
-                <button class="btn btn-outline" (click)="remove(c)">Delete</button>
+                <button class="btn btn-secondary" (click)="remove(c)">Delete</button>
               </td>
             </tr>
           </tbody>
