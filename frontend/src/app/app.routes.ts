@@ -6,6 +6,10 @@ import { LayoutComponent } from './components/layout/layout.component';
 export const routes: Routes = [
   { path: 'admin/categories', component: AdminCategoriesComponent },
   {
+    path: 'savings-chat',
+    loadComponent: () => import('./pages/public-savings-chat/public-savings-chat.component').then(m => m.PublicSavingsChatComponent)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
   },
