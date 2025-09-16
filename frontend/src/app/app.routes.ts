@@ -27,6 +27,7 @@ export const routes: Routes = [
       { path: 'reconciliation', loadComponent: () => import('./pages/reconciliation/reconciliation.component').then(m => m.ReconciliationComponent) },
       { path: 'clients', loadComponent: () => import('./pages/clients/clients.component').then(m => m.ClientsComponent) },
       { path: 'agents', loadComponent: () => import('./pages/agents/agents.component').then(m => m.AgentsComponent) },
+      { path: 'leads', loadComponent: () => import('./pages/leads/leads.component').then(m => m.LeadsComponent) },
       { path: 'insurance-companies', loadComponent: () => import('./pages/insurance-companies/insurance-companies.component').then(m => m.InsuranceCompaniesComponent) },
       { path: 'insights', loadComponent: () => import('./pages/insights/insights.component').then(m => m.InsightsComponent) },
       { path: 'fees-savings', loadComponent: () => import('./pages/fees-lead-magnet/fees-lead-magnet.component').then(m => m.FeesLeadMagnetComponent) },

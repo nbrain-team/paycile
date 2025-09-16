@@ -17,6 +17,7 @@ import { verifyRouter } from './routes/verify.routes';
 import { cashFlowRouter } from './routes/cash-flow.routes';
 import { feesRouter } from './routes/fees.routes';
 import { errorHandler } from './middleware/error.middleware';
+import { leadsRouter } from './routes/leads.routes';
 import { logger } from './utils/logger';
 
 dotenv.config();
@@ -57,6 +58,7 @@ app.use('/api/ai', aiRouter);
 app.use('/api/verify', verifyRouter);
 app.use('/api/cash-flow', cashFlowRouter);
 app.use('/api/fees', feesRouter);
+app.use('/api/leads', leadsRouter);
 
 // Error handling
 app.use(errorHandler);

@@ -2,6 +2,7 @@ import { Component, ElementRef, ViewChild, effect, signal } from '@angular/core'
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, ExtractResponse } from '../../services/fees.service';
+import { LeadService } from '../../services/lead.service';
 
 @Component({
   selector: 'app-chat',
@@ -139,7 +140,7 @@ export class ChatComponent {
   monthlyFixedFees = 0;
   perCard: NonNullable<AdvancedCalcRequest['perCard']> = { visa: {}, mc: {}, discover: {}, amex: {} };
 
-  constructor(private feesService: FeesService) {
+  constructor(private feesService: FeesService, private leadService: LeadService) {
     // Preload categories so they're available when needed
     this.feesService.listCategories().subscribe({
       next: (rows: any[]) => this.categories.set(rows || []),
@@ -148,6 +149,9 @@ export class ChatComponent {
       }
     });
   }
+
+  leadId: string | null = null;
+  sessionId: string | null = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2);
 
   // Auto-scroll to bottom when messages change
   autoScroll = effect(() => {
@@ -189,6 +193,13 @@ export class ChatComponent {
     this.stage.set('collect_volume');
     this.pushUser(b === 'monthly' ? 'Monthly' : 'Annual');
     this.pushAssistant(`Great. What is your ${b} total card volume in dollars?`);
+    // Start a lead session immediately
+    if (!this.leadId) {
+      this.leadService.start(this.sessionId, { basis: this.basis, transcript: this.messages() }).subscribe({
+        next: (r) => { this.leadId = r.data.id; },
+        error: () => {}
+      });
+    }
   }
 
   // PDF upload removed
@@ -215,6 +226,7 @@ export class ChatComponent {
         this.transactions = n;
         this.stage.set('collect_fees');
         this.pushAssistant('What were the total fees in dollars?');
+        if (this.leadId) this.leadService.update(this.leadId, { transactions: this.transactions, transcript: this.messages() }).subscribe({ next: () => {}, error: () => {} });
         break;
       }
       case 'collect_fees': {
@@ -224,6 +236,7 @@ export class ChatComponent {
         // Ask for category next to refine proposed ER
         this.stage.set('collect_category');
         this.pushAssistant('Got it. What type of business are you? Choose a category for a more accurate proposed effective rate.');
+        if (this.leadId) this.leadService.update(this.leadId, { fees: this.fees, transcript: this.messages() }).subscribe({ next: () => {}, error: () => {} });
         break;
       }
       case 'collect_category': {
@@ -241,6 +254,7 @@ export class ChatComponent {
           this.pushAssistant(`Thanks ${first}! Can you provide me your email or phone number?`);
           this.stage.set('collect_contact');
         });
+        if (this.leadId) this.leadService.update(this.leadId, { name, transcript: this.messages() }).subscribe({ next: () => {}, error: () => {} });
         break;
       }
       case 'collect_contact': {
@@ -252,6 +266,7 @@ export class ChatComponent {
           this.pushAssistant(`Great! I will ${capital} you shortly.`);
           this.stage.set('finished');
         });
+        if (this.leadId) this.leadService.update(this.leadId, { email: this.isEmail(contact) ? contact : null, phone: this.isPhone(contact) ? contact : null, transcript: this.messages() }).subscribe({ next: () => {}, error: () => {} });
         break;
       }
       // Advanced-only steps removed from primary flow
@@ -289,7 +304,23 @@ export class ChatComponent {
     setTimeout(() => { delayPassed = true; stopTyping(); doneIfReady(); }, minDelayMs);
 
     this.feesService.calculate(this.volume, this.transactions, this.fees, this.mccCategory).subscribe({
-      next: (r: CalcResponse) => { cached = r; gotResult = true; doneIfReady(); },
+      next: (r: CalcResponse) => { 
+        cached = r; gotResult = true; 
+        if (this.leadId) this.leadService.update(this.leadId, {
+          basis: this.basis,
+          volume: this.volume,
+          transactions: this.transactions,
+          fees: this.fees,
+          mccCategory: this.mccCategory,
+          avgTicket: r.avgTicket,
+          currentEffRate: r.currentEffRate,
+          proposedEffRate: r.proposedEffRate,
+          savingsDollars: r.savingsDollars,
+          rateDelta: r.rateDelta,
+          transcript: this.messages()
+        }).subscribe({ next: () => {}, error: () => {} });
+        doneIfReady(); 
+      },
       error: () => { stopTyping(); this.error.set('Calculation failed'); }
     });
   }
