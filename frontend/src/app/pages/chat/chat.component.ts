@@ -106,7 +106,7 @@ import { LeadService } from '../../services/lead.service';
               (click)="setMccCategory(c.name)"
               class="px-3 py-2 text-sm text-gray-800 hover:bg-gray-50 cursor-pointer"
             >
-              {{ c.name }} <span class="text-gray-400">· {{ formatPercent(c.rate_percent) }}</span>
+              {{ c.name }}
             </div>
           </div>
         </div>
@@ -281,19 +281,22 @@ export class ChatComponent {
     let gotResult = false;
     let delayPassed = false;
     let cached: CalcResponse | null = null;
-    const minDelayMs = 1100;
+    const minDelayMs = 3000;
 
     const doneIfReady = () => {
       if (gotResult && delayPassed && cached) {
         this.messages.update((m) => m.filter(x => x.type !== 'typing'));
         this.messages.update((m) => [...m, { role: 'assistant', type: 'result', result: cached!, input: { basis: this.basis, volume: this.volume, transactions: this.transactions, fees: this.fees, mccCategory: this.mccCategory } }]);
         this.stage.set('basic_done');
-        const savingsMsg = `Based on the information you provided, it looks like we have the potential to save you ${this.formatDollars(cached!.savingsDollars)}! If you have 10 minutes, we could get on a call and detail this out for you a little further and we can walk you through how easy it is to start getting these savings now.`;
+        const annualCurrentFees = this.yearlyFees({ basis: this.basis, fees: this.fees });
+        const annualProposedFees = this.proposedFeesYearly(cached!, { basis: this.basis, volume: this.volume });
+        const annualSavings = Math.max(0, annualCurrentFees - annualProposedFees);
+        const savingsMsg = `Based on the information you provided, it looks like we have the potential to save you ${this.formatDollars(annualSavings)}! If you have 10 minutes, we could get on a call and detail this out for you a little further and we can walk you through how easy it is to start getting these savings now.`;
         // Sequential assistant messages with typing delays
         (async () => {
-          await this.simulateTyping(900);
+          await this.simulateTyping(3000);
           this.pushAssistant(savingsMsg);
-          await this.simulateTyping(700);
+          await this.simulateTyping(3000);
           this.pushAssistant('If you are interested in chatting, first, can I ask you what your name is?');
           this.stage.set('collect_name');
         })();
