@@ -19,6 +19,11 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
         <div *ngFor="let m of messages()" class="flex" [class.justify-end]="m.role === 'user'">
           <div [ngClass]="[m.role === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-900', (m.type === 'result' || m.type === 'advanced') ? 'w-3/4 max-w-none' : 'max-w-[85%]']" class="rounded-lg px-3 py-2 text-sm whitespace-pre-wrap">
             <div *ngIf="m.type === 'text'">{{ m.text }}</div>
+            <div *ngIf="m.type === 'typing'" class="flex items-center gap-1 text-gray-500">
+              <span class="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></span>
+              <span class="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-100"></span>
+              <span class="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-200"></span>
+            </div>
             <div *ngIf="m.type === 'result'">
               <div class="font-medium mb-1">Quick Estimate</div>
               <div class="text-sm text-gray-500 mb-3">
@@ -87,20 +92,23 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
         <button class="btn btn-secondary" (click)="chooseBasis('monthly')">Monthly</button>
         <button class="btn btn-secondary" (click)="chooseBasis('annual')">Annual</button>
       </div>
-      <div class="mt-3 flex flex-wrap gap-2" *ngIf="stage() === 'collect_category'">
-        <button
-          class="btn btn-secondary"
-          *ngFor="let c of activeCategories()"
-          (click)="setMccCategory(c.name)"
-        >
-          {{ c.name }}
-        </button>
-      </div>
+      
       
 
       <!-- Input bar -->
       <div class="mt-4 flex items-center gap-2">
-        <input class="input w-full" type="text" [(ngModel)]="input" [placeholder]="placeholder()" (keydown.enter)="send()" />
+        <div class="relative w-full">
+          <input class="input w-full" type="text" [(ngModel)]="input" [placeholder]="placeholder()" (keydown.enter)="send()" />
+          <div *ngIf="stage() === 'collect_category' && filteredActiveCategories().length > 0" class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-soft max-h-60 overflow-auto">
+            <div
+              *ngFor="let c of filteredActiveCategories()"
+              (click)="setMccCategory(c.name)"
+              class="px-3 py-2 text-sm text-gray-800 hover:bg-gray-50 cursor-pointer"
+            >
+              {{ c.name }} <span class="text-gray-400">· {{ formatPercent(c.rate_percent) }}</span>
+            </div>
+          </div>
+        </div>
         <button class="btn btn-primary" (click)="send()">Send</button>
       </div>
       <div class="text-xs text-error-600 mt-1" *ngIf="error()">{{ error() }}</div>
@@ -111,10 +119,10 @@ import { FeesService, AdvancedCalcRequest, AdvancedCalcResponse, CalcResponse, E
 export class ChatComponent {
   @ViewChild('scrollContainer') scrollContainer?: ElementRef<HTMLDivElement>;
 
-  messages = signal<Array<{ role: 'user' | 'assistant'; type: 'text' | 'result' | 'advanced'; text?: string; result?: CalcResponse; adv?: AdvancedCalcResponse; input?: { basis: string; volume: number; transactions: number; fees: number; mccCategory?: string } }>>([
+  messages = signal<Array<{ role: 'user' | 'assistant'; type: 'text' | 'typing' | 'result' | 'advanced'; text?: string; result?: CalcResponse; adv?: AdvancedCalcResponse; token?: string; input?: { basis: string; volume: number; transactions: number; fees: number; mccCategory?: string } }>>([
     { role: 'assistant', type: 'text', text: 'Hi! Let’s estimate your credit card processing savings. Is your total volume and fees monthly or annual?' }
   ]);
-  stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'collect_category' | 'basic_done' | 'advanced_done'>('collect_basis');
+  stage = signal<'collect_basis' | 'collect_volume' | 'collect_transactions' | 'collect_fees' | 'collect_category' | 'processing_basic' | 'basic_done' | 'collect_name' | 'collect_contact' | 'finished' | 'advanced_done'>('collect_basis');
   input = '';
   error = signal<string | null>(null);
 
@@ -155,7 +163,9 @@ export class ChatComponent {
       case 'collect_volume': return 'Enter total volume (e.g., 250000)';
       case 'collect_transactions': return 'Enter total transactions (e.g., 1083)';
       case 'collect_fees': return 'Enter total fees (e.g., 6500)';
-      case 'collect_category': return 'Choose a category above or type it (e.g., Insurance)';
+      case 'collect_category': return 'Start typing to search categories (e.g., Insurance)';
+      case 'collect_name': return 'Your first name';
+      case 'collect_contact': return 'Your email or phone number';
       // Advanced-only placeholders removed from primary flow
       default: return 'Type here…';
     }
@@ -163,6 +173,16 @@ export class ChatComponent {
 
   pushAssistant(text: string) { this.messages.update((m) => [...m, { role: 'assistant', type: 'text', text }]); }
   pushUser(text: string) { this.messages.update((m) => [...m, { role: 'user', type: 'text', text }]); }
+  pushTyping() { 
+    const token = Math.random().toString(36).slice(2);
+    this.messages.update((m) => [...m, { role: 'assistant', type: 'typing', token }]);
+    return () => this.messages.update((m) => m.filter(x => (x as any).token !== token));
+  }
+  async simulateTyping(ms = 900) {
+    const stop = this.pushTyping();
+    await new Promise<void>(res => setTimeout(res, ms));
+    stop();
+  }
 
   chooseBasis(b: 'monthly' | 'annual') {
     this.basis = b;
@@ -213,6 +233,27 @@ export class ChatComponent {
         this.setMccCategory(cat);
         break;
       }
+      case 'collect_name': {
+        const name = text.trim();
+        if (!name) { this.error.set('Please share your name'); return; }
+        const first = this.extractFirstName(name);
+        this.simulateTyping(600).then(() => {
+          this.pushAssistant(`Thanks ${first}! Can you provide me your email or phone number?`);
+          this.stage.set('collect_contact');
+        });
+        break;
+      }
+      case 'collect_contact': {
+        const contact = text.trim();
+        if (!contact) { this.error.set('Please provide an email or phone number'); return; }
+        const method = this.isEmail(contact) ? 'email' : (this.isPhone(contact) ? 'call' : 'reach out');
+        this.simulateTyping(700).then(() => {
+          const capital = method === 'email' ? 'Email' : method === 'call' ? 'Call' : 'Reach out';
+          this.pushAssistant(`Great! I will ${capital} you shortly.`);
+          this.stage.set('finished');
+        });
+        break;
+      }
       // Advanced-only steps removed from primary flow
       default:
         // For other stages we rely on buttons/quick replies
@@ -221,13 +262,35 @@ export class ChatComponent {
   }
 
   calculateBasic() {
+    this.stage.set('processing_basic');
+    let gotResult = false;
+    let delayPassed = false;
+    let cached: CalcResponse | null = null;
+    const minDelayMs = 1100;
+
+    const doneIfReady = () => {
+      if (gotResult && delayPassed && cached) {
+        this.messages.update((m) => m.filter(x => x.type !== 'typing'));
+        this.messages.update((m) => [...m, { role: 'assistant', type: 'result', result: cached!, input: { basis: this.basis, volume: this.volume, transactions: this.transactions, fees: this.fees, mccCategory: this.mccCategory } }]);
+        this.stage.set('basic_done');
+        const savingsMsg = `Based on the information you provided, it looks like we have the potential to save you ${this.formatDollars(cached!.savingsDollars)}! If you have 10 minutes, we could get on a call and detail this out for you a little further and we can walk you through how easy it is to start getting these savings now.`;
+        // Sequential assistant messages with typing delays
+        (async () => {
+          await this.simulateTyping(900);
+          this.pushAssistant(savingsMsg);
+          await this.simulateTyping(700);
+          this.pushAssistant('If you are interested in chatting, first, can I ask you what your name is?');
+          this.stage.set('collect_name');
+        })();
+      }
+    };
+
+    const stopTyping = this.pushTyping();
+    setTimeout(() => { delayPassed = true; stopTyping(); doneIfReady(); }, minDelayMs);
+
     this.feesService.calculate(this.volume, this.transactions, this.fees, this.mccCategory).subscribe({
-      next: (r: CalcResponse) => {
-        this.messages.update((m) => [...m, { role: 'assistant', type: 'result', result: r, input: { basis: this.basis, volume: this.volume, transactions: this.transactions, fees: this.fees, mccCategory: this.mccCategory } }]);
-        this.stage.set('advanced_done');
-        this.pushAssistant('If you give us 10 minutes of your time, we can narrow this down even further. Want to schedule a call here?');
-      },
-      error: () => this.error.set('Calculation failed')
+      next: (r: CalcResponse) => { cached = r; gotResult = true; doneIfReady(); },
+      error: () => { stopTyping(); this.error.set('Calculation failed'); }
     });
   }
 
@@ -306,5 +369,26 @@ export class ChatComponent {
 
   activeCategories() {
     return (this.categories() || []).filter(c => c.is_active);
+  }
+
+  filteredActiveCategories() {
+    const q = this.input.trim().toLowerCase();
+    const list = this.activeCategories();
+    if (!q) return list.slice(0, 8);
+    return list.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
+  }
+
+  extractFirstName(full: string): string {
+    const parts = full.trim().split(/\s+/);
+    return parts[0]?.replace(/[^A-Za-z'-]/g, '') || 'there';
+  }
+
+  isEmail(v: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  }
+
+  isPhone(v: string): boolean {
+    const digits = v.replace(/\D/g, '');
+    return digits.length >= 10;
   }
 }
