@@ -135,6 +135,36 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Export as CSV
+router.get('/export.csv', async (_req: Request, res: Response) => {
+  try {
+    const list = readAllLeads();
+    const headers = [
+      'id','created_at','updated_at','session_id','source','name','email','phone','basis','volume','transactions','fees','mcc_category','avg_ticket','current_eff_rate','proposed_eff_rate','savings_dollars','rate_delta'
+    ];
+    const csv = [headers.join(',')].concat(list.map(l => headers.map(h => {
+      const v = (l as any)[h];
+      if (v === null || v === undefined) return '';
+      const s = String(v).replace(/"/g, '""');
+      return /[",\n]/.test(s) ? `"${s}"` : s;
+    }).join(','))).join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
+    res.send(csv + '\n');
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e?.message || 'Failed to export CSV' });
+  }
+});
+
+// Simple HTML page with download link
+router.get('/export', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Download Leads</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f9fafb;color:#111827;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:2rem}a{background:#2563eb;color:#fff;padding:.75rem 1rem;border-radius:.5rem;text-decoration:none}a:hover{background:#1d4ed8}</style>
+  </head><body><a href="/api/leads/export.csv">Download Leads CSV</a></body></html>`);
+});
+
 export { router as leadsRouter };
 
 
